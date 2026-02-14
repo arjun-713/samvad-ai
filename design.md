@@ -1,309 +1,307 @@
-# Samvad AI - System Design Document
+# Samvad AI — System Design
 
 ## 1. Architecture Overview
 
-Samvad AI is a cloud-native, microservices-based platform that transforms live video streams into accessible content with <2s latency.
+Samvad AI is a cloud-native real-time accessibility platform that transforms live video streams into multi-modal accessible content with sub-2-second latency. The system ingests live streams, extracts audio, performs speech recognition, applies cultural transcreation, generates Indian Sign Language (ISL) avatars, synthesizes multi-language audio dubbing, and delivers synchronized adaptive bitrate streams via CDN.
 
-### High-Level Pipeline
+The architecture follows a microservices pattern with event-driven communication, stateless compute, and horizontal scalability. All processing occurs in parallel pipelines to minimize end-to-end latency while maintaining synchronization across output modalities.
+
+## 2. Processing Pipeline
 
 ```
-Live Stream → Audio Extraction → Speech-to-Text → Translation
-                                                        ↓
-                                    ┌──────────────────┴──────────────────┐
-                                    ↓                                      ↓
-                            ISL Grammar → Avatar                    Voice Dubbing
-                                    ↓                                      ↓
-                                    └──────────────────┬──────────────────┘
-                                                       ↓
-                                    Stream Multiplexing → CDN → Users
+Live Stream Input
+    ↓
+AWS MediaLive (Ingestion & Audio Extraction)
+    ↓
+Amazon Transcribe (Speech-to-Text Streaming)
+    ↓
+Amazon Bedrock (Cultural Transcreation)
+    ↓
+    ├─→ Custom NLP Pipeline (ISL Grammar) → Amazon Nova Reel (Avatar)
+    │
+    └─→ Amazon Polly (Neural Voice Dubbing)
+    ↓
+AWS Elemental MediaPackage (Stream Multiplexing)
+    ↓
+Amazon CloudFront (CDN Delivery)
+    ↓
+End Users (Web/Mobile)
 ```
 
-### Design Principles
+**Pipeline Stages**:
 
-- **Microservices**: Independent, scalable services
-- **Event-driven**: Async communication via message queues
-- **Stateless**: All services horizontally scalable
-- **Real-time**: Chunk-based streaming processing
-- **Fault-tolerant**: Graceful degradation on failures
+1. **Media Ingestion** (50ms): MediaLive captures RTMP/WebRTC/HLS streams and extracts audio
+2. **Speech Recognition** (400ms): Transcribe converts audio chunks to text with timestamps
+3. **Cultural Transcreation** (250ms): Bedrock LLM adapts text with cultural context preservation
+4. **Parallel Processing** (900ms max):
+   - Path A: ISL grammar conversion (150ms) → Nova Reel avatar generation (750ms)
+   - Path B: Polly neural voice synthesis (350ms)
+5. **Multiplexing** (150ms): MediaPackage synchronizes avatar, audio, and subtitles into HLS/DASH
+6. **Delivery** (100ms): CloudFront edge locations serve adaptive streams
 
----
+**Total Latency**: ~1.85s (P95 < 2s target)
 
-## 2. System Components
+## 3. Core Components
 
 ### Ingestion Service
-- Accepts RTMP, WebRTC, HLS streams
-- Extracts audio and splits into 2-second chunks
-- Publishes chunks to message queue
-- **Tech**: NGINX-RTMP, FFmpeg, Kafka
 
-### Speech Recognition Service
-- Converts audio to text with timestamps
-- Supports 10+ Indian languages and accents
-- Speaker diarization and punctuation
-- **Tech**: Whisper/IndicWav2Vec, GPU inference (T4/A10)
-- **Latency**: <500ms per chunk
+**AWS MediaLive** captures live streams and performs audio extraction.
 
-### Transcreation Engine
-- Translates text with cultural adaptation
-- Preserves idioms, metaphors, and context
+- Accepts RTMP, WebRTC, HLS, DASH inputs
+- Normalizes audio to 16kHz mono PCM
+- Splits into 2-second chunks with 500ms overlap
+- Publishes chunks to Amazon Kinesis Data Streams
+- Handles stream reconnection and error recovery
+
+### Speech Recognition
+
+**Amazon Transcribe Streaming** converts audio to text in real-time.
+
+- Supports 10+ Indian languages with accent adaptation
+- Speaker diarization and automatic punctuation
+- Custom vocabulary for domain-specific terms
+- Confidence scores and timestamp alignment
+- Outputs to Amazon EventBridge for downstream processing
+
+### Cultural Transcreation Engine
+
+**Amazon Bedrock** (Claude/Titan models) performs context-aware translation.
+
+- Preserves idioms, metaphors, and cultural references
 - Handles code-switching (English-Hindi mixing)
-- **Tech**: mT5, IndicTrans2, Redis cache
-- **Latency**: <300ms per chunk
+- Maintains context window across chunks using Amazon ElastiCache (Redis)
+- Generates translations for 10+ target languages
+- Caches common phrases to reduce latency
 
 ### ISL Grammar Converter
-- Transforms text to ISL grammatical structure
-- Generates gloss notation for avatar
-- Adds non-manual markers (facial expressions)
-- **Tech**: Custom seq2seq model, rule-based engine
-- **Latency**: <200ms per sentence
 
-### Avatar Generation Engine
-- Renders photorealistic 3D ISL avatar
-- 60 FPS with smooth sign transitions
-- Facial animation synchronized with signs
-- **Tech**: Unity/Unreal, GPU rendering (RTX A5000)
-- **Latency**: <800ms per chunk
+**Custom NLP Pipeline** transforms text to ISL grammatical structure.
 
-### Audio Dubbing Engine
-- Neural voice synthesis with cloning
-- Matches original speaker's tone and emotion
-- Supports 10+ Indian languages
-- **Tech**: VITS/Coqui TTS, GPU inference
-- **Latency**: <400ms per chunk
+- Deployed on AWS Lambda with container images
+- Converts subject-verb-object to topic-comment structure
+- Generates gloss notation for avatar rendering
+- Adds non-manual markers (facial expressions, head movements)
+- Rule-based engine with ML fallback for ambiguous cases
 
-### Stream Multiplexer
-- Synchronizes avatar, audio, and subtitles
-- Generates HLS/DASH adaptive streams
-- Maintains <100ms sync accuracy
-- **Tech**: FFmpeg, WebRTC
-- **Latency**: <200ms
+### Avatar Generation
 
-### CDN Layer
-- Distributes streams globally with edge caching
-- Multi-CDN strategy (Cloudflare, AWS CloudFront)
-- <200ms latency within India
-- **Tech**: HLS/DASH, HTTP/3
+**Amazon Nova Reel** synthesizes photorealistic 3D ISL avatars.
 
----
+- Renders at 60 FPS with smooth sign transitions
+- Facial animation synchronized with sign meaning
+- Customizable appearance (skin tone, clothing, background)
+- Pre-rendered sign library (5000+ signs) for common vocabulary
+- GPU-accelerated rendering on EC2 G5 instances
 
-## 3. Data Flow
+### Audio Dubbing
 
-### Step-by-Step Pipeline
+**Amazon Polly Neural TTS** generates multi-language voice synthesis.
 
-1. **Ingestion** (50ms)
-   - Extract audio from live stream
-   - Normalize to 16kHz mono PCM
-   - Split into 2s chunks with 500ms overlap
+- Neural voices for 10+ Indian languages
+- Tone and emotion matching with original speaker
+- SSML markup for prosody control
+- Streaming output for low latency
+- Voice cloning via custom lexicons
 
-2. **Speech Recognition** (400ms)
-   - Convert audio chunk to text
-   - Add punctuation and timestamps
-   - Detect source language
+### Multiplexing Layer
 
-3. **Transcreation** (250ms)
-   - Translate to target language(s)
-   - Adapt cultural references
-   - Preserve context from previous chunks
+**AWS Elemental MediaPackage** synchronizes and packages streams.
 
-4. **Parallel Processing** (900ms max)
-   - **Path A**: ISL Grammar (150ms) → Avatar Rendering (750ms)
-   - **Path B**: Voice Dubbing (350ms)
-   - Both paths run concurrently
+- Combines avatar video, dubbed audio, and subtitles
+- Generates HLS/DASH adaptive bitrate manifests
+- Maintains <100ms sync accuracy across tracks
+- Creates multiple quality levels (240p-1080p)
+- Just-in-time packaging for live content
 
-5. **Multiplexing** (150ms)
-   - Sync all output tracks
-   - Generate HLS/DASH segments
-   - Publish to CDN origin
+### Delivery Layer
 
-6. **Delivery** (100ms)
-   - CDN edge serves to users
-   - Adaptive bitrate based on network
+**Amazon CloudFront** distributes streams globally.
 
-**Total Latency**: ~1.8s (within 2s target)
+- Edge locations across India (Mumbai, Delhi, Bangalore, Hyderabad)
+- HTTP/3 and Brotli compression support
+- 2-second TTL for live segment caching
+- Origin shield for origin protection
+- Real-time logs to Amazon Kinesis for monitoring
 
-### Chunk Processing Strategy
+## 4. Orchestration
 
-- **Chunk size**: 2 seconds (balance between latency and context)
-- **Overlap**: 500ms to prevent word cutoff
-- **Ordering**: Chunks tagged with stream_id, chunk_id, timestamp
-- **Failure handling**: Skip failed chunks after 3 retries, continue stream
+**AWS Step Functions** coordinates the end-to-end workflow.
 
----
+- Express Workflows for high-throughput, short-duration processing
+- Parallel state execution for ISL and dubbing paths
+- Error handling with exponential backoff retry (max 3 attempts)
+- Dead letter queue (Amazon SQS) for failed chunks
+- CloudWatch integration for workflow monitoring
 
-## 4. Infrastructure Design
+**Event-Driven Architecture**:
 
-### Cloud Architecture
+- Amazon EventBridge routes events between services
+- Amazon Kinesis Data Streams for high-throughput chunk processing
+- Amazon SQS for asynchronous task queuing
+- AWS Lambda for serverless compute orchestration
 
-**Compute**:
-- **Kubernetes (EKS/GKE)**: Container orchestration
-- **GPU instances**: Avatar rendering, ASR, dubbing (T4, A10, RTX)
-- **CPU instances**: Transcreation, multiplexing (Fargate/Cloud Run)
-- **Serverless**: API gateway, webhooks (Lambda/Cloud Functions)
+## 5. Latency Optimization
 
-**Storage**:
-- **Redis**: Session state, context windows (1-hour TTL)
-- **S3/GCS**: HLS segments, transcripts (7-day retention)
-- **PostgreSQL**: User data, stream metadata
+**Parallel Processing**:
 
-**Messaging**:
-- **Kafka**: Inter-service communication, chunk queues
-- **Partitioning**: By stream_id for ordering guarantees
+- ISL and dubbing pipelines execute concurrently
+- Step Functions parallel state reduces critical path
+- GPU batching processes 4-16 streams per instance
+- Async I/O prevents blocking operations
 
-**CDN**:
-- **Multi-CDN**: Cloudflare (primary), AWS CloudFront (secondary)
-- **Edge locations**: Mumbai, Delhi, Bangalore, Hyderabad
-- **Caching**: 2s TTL for live segments
+**Chunked Streaming**:
 
-### Auto-Scaling Strategy
+- 2-second audio chunks balance latency and context
+- 500ms overlap prevents word cutoff
+- Streaming APIs (Transcribe, Polly) reduce buffering
+- Progressive rendering starts before chunk completion
 
-**Horizontal Pod Autoscaler**:
-- Scale based on GPU/CPU utilization (target: 70%)
-- Queue depth monitoring (Kafka lag)
-- Min replicas: 2 per service (redundancy)
-- Max replicas: 100 per service
+**Pre-Warmed Compute**:
 
-**Cluster Autoscaler**:
-- Add nodes when pods pending
-- Remove nodes at <50% utilization for 10 minutes
-- Separate node pools: CPU-optimized, GPU-optimized
-
-**Predictive Scaling**:
-- Pre-scale before expected traffic spikes
-- Historical pattern analysis (time of day, events)
-
-### Multi-Region Setup
-
-- **Primary**: Mumbai (India West)
-- **Secondary**: Bangalore (India South)
-- **Failover**: Automatic DNS routing on regional failure
-- **RTO**: 15 minutes, **RPO**: 5 minutes
-
----
-
-## 5. Performance Strategy
-
-### Latency Reduction
-
-**Model Optimization**:
-- Quantization: FP32 → FP16 → INT8 (2-4x speedup)
-- Model pruning and distillation
-- ONNX Runtime for optimized inference
-- TensorRT for NVIDIA GPU acceleration
-
-**Caching**:
-- L1 (In-memory): Models, common phrases (2-4 GB per instance)
-- L2 (Redis): Transcripts, translations, avatar segments (1-hour TTL)
-- L3 (CDN): HLS segments (2s TTL for live)
-
-**Pre-Warming**:
-- Maintain 2+ always-on instances per service
-- Models pre-loaded in memory
+- Lambda provisioned concurrency (2+ instances per function)
+- EC2 warm pools for GPU instances
+- Models pre-loaded in memory (EFS shared storage)
 - Predictive scaling before traffic spikes
-- Shared EFS/Filestore for model caching
 
-**Parallel Execution**:
-- ISL and dubbing paths run concurrently
-- GPU batching: Process 4-16 streams per GPU
-- Pipeline parallelism: Overlap processing stages
-- Async I/O for non-blocking operations
+**Edge Caching**:
 
-**Network Optimization**:
-- HTTP/2 multiplexing
-- Brotli compression for text
-- Regional endpoints to reduce RTT
-- Connection pooling
+- CloudFront edge locations reduce RTT
+- MediaPackage origin caching (5-second window)
+- ElastiCache for transcreation results (1-hour TTL)
+- Pre-rendered avatar segments for common signs
 
-### Bottleneck Mitigation
+## 6. Scalability Model
 
-- **Avatar rendering** (slowest at 750ms):
-  - Pre-rendered sign library (5000+ signs)
-  - Level-of-detail (LOD) rendering
-  - Hardware encoding (NVENC)
-  - Fallback to text-only if >2s
+**Auto-Scaling Infrastructure**:
 
----
+- EC2 Auto Scaling Groups for GPU instances (target: 70% utilization)
+- Lambda concurrency scaling (up to 1000 concurrent executions)
+- Kinesis shard auto-scaling based on throughput
+- MediaLive channel scaling for concurrent streams
 
-## 6. Security Considerations
+**Serverless Architecture**:
 
-### Data Protection
+- Lambda for stateless processing (grammar conversion, orchestration)
+- Fargate for containerized services (transcreation engine)
+- API Gateway for REST/WebSocket endpoints
+- DynamoDB for session state and metadata
+
+**Model Tiering**:
+
+- Tier 1 (High Priority): Full 60 FPS avatar, neural voices
+- Tier 2 (Standard): 30 FPS avatar, standard voices
+- Tier 3 (Fallback): Text-only subtitles, no avatar
+- Dynamic tier assignment based on load and user preferences
+
+## 7. Reliability & Failover
+
+**Monitoring**:
+
+- CloudWatch metrics for latency, error rates, GPU utilization
+- X-Ray distributed tracing for end-to-end request tracking
+- CloudWatch Logs Insights for log analysis
+- SNS alerts for threshold breaches (latency > 2s, error rate > 1%)
+
+**Error Handling**:
+
+- Exponential backoff retry (max 3 attempts, 100ms-1s delays)
+- Circuit breaker pattern for failing dependencies
+- Dead letter queues for unprocessable chunks
+- Graceful degradation to lower quality tiers
+
+**Graceful Degradation**:
+
+- Skip failed chunks after retries, continue stream
+- Fall back to text-only if avatar rendering fails
+- Use cached translations if Bedrock unavailable
+- Display "Processing..." indicator during temporary delays
+
+**Multi-Region Failover**:
+
+- Primary: ap-south-1 (Mumbai)
+- Secondary: ap-south-2 (Hyderabad)
+- Route 53 health checks with automatic DNS failover
+- Cross-region replication for S3 and DynamoDB
+- RTO: 15 minutes, RPO: 5 minutes
+
+## 8. Security & Compliance
 
 **Encryption**:
-- TLS 1.3 for all API traffic
-- AES-256 for data at rest (S3, database)
+
+- TLS 1.3 for all API traffic (API Gateway, CloudFront)
+- AES-256 encryption at rest (S3, EBS, DynamoDB)
+- AWS KMS for key management with automatic rotation
 - DTLS-SRTP for WebRTC media streams
-- AWS KMS/GCP Cloud KMS for key management
 
-**Authentication & Authorization**:
-- OAuth 2.0 for user authentication
-- JWT tokens (1-hour expiry)
-- API keys for service-to-service communication
-- Role-based access control (RBAC)
+**Access Control**:
 
-### Network Security
+- IAM roles with least privilege principle
+- VPC isolation for compute resources
+- Security groups whitelist required ports only
+- AWS WAF for API protection (rate limiting, SQL injection)
 
-- VPC isolation for services
-- Private subnets for databases
-- Security groups: Whitelist required ports only
-- Service mesh (Istio) with mTLS between microservices
+**Accessibility Standards**:
 
-### API Security
+- WCAG 2.1 Level AA compliance
+- Keyboard navigation support
+- Screen reader compatible (ARIA labels)
+- High contrast UI themes
 
-- Rate limiting: 100 req/min per user
-- Input validation and sanitization
-- CORS policies (whitelist origins)
-- DDoS protection via Cloudflare
+**Compliance**:
 
-### Privacy
-
-- No audio/video storage beyond processing
-- Anonymized data for analytics
-- GDPR and Indian data protection compliance
+- GDPR and Indian data protection laws
+- No audio/video storage beyond processing (7-day retention)
+- Anonymized analytics data
 - User data deletion within 30 days on request
 
-### Compliance
+## 9. Technology Stack Summary
 
-- WCAG 2.1 Level AA accessibility
-- SOC 2 Type II certification
-- ISO 27001 (information security)
-- Regular security audits and penetration testing
+**AWS Media Services**:
+- AWS Elemental MediaLive (stream ingestion)
+- AWS Elemental MediaPackage (adaptive bitrate packaging)
+- Amazon CloudFront (CDN delivery)
 
----
+**AWS AI/ML Services**:
+- Amazon Transcribe (speech-to-text streaming)
+- Amazon Bedrock (cultural transcreation LLM)
+- Amazon Nova Reel (avatar generation)
+- Amazon Polly (neural voice synthesis)
 
-## 7. Future Improvements
+**AWS Compute**:
+- AWS Lambda (serverless functions)
+- Amazon EC2 G5 instances (GPU workloads)
+- AWS Fargate (containerized services)
 
-### Short-Term (3-6 months)
+**AWS Storage & Databases**:
+- Amazon S3 (HLS segments, transcripts)
+- Amazon ElastiCache (Redis for caching)
+- Amazon DynamoDB (session state, metadata)
+- Amazon EFS (shared model storage)
 
-- **Dialect support**: Regional ISL variations (North vs South)
-- **Mobile SDK**: Native iOS/Android integration
-- **Offline mode**: Pre-downloaded models for low connectivity
-- **Analytics dashboard**: Creator insights on accessibility usage
+**AWS Messaging & Orchestration**:
+- AWS Step Functions (workflow coordination)
+- Amazon EventBridge (event routing)
+- Amazon Kinesis Data Streams (chunk processing)
+- Amazon SQS (task queuing, DLQ)
 
-### Medium-Term (6-12 months)
+**AWS Networking & Security**:
+- Amazon VPC (network isolation)
+- AWS WAF (web application firewall)
+- AWS KMS (key management)
+- Amazon Route 53 (DNS and failover)
 
-- **Personal avatars**: User-uploaded photos for custom avatars
-- **Reverse mode**: Sign-to-speech for deaf creators
-- **AR overlays**: Augmented reality avatar integration
-- **Interactive learning**: Sign language education mode
+**AWS Monitoring & Operations**:
+- Amazon CloudWatch (metrics, logs, alarms)
+- AWS X-Ray (distributed tracing)
+- Amazon SNS (alerting)
 
-### Long-Term (12+ months)
-
-- **Global expansion**: Support for ASL, BSL, other sign languages
-- **Multi-camera support**: Complex sign language from multiple angles
-- **Edge AI**: Deploy lightweight models at edge locations
-- **Community platform**: User-contributed sign dictionaries
-- **Enterprise features**: White-label solutions, API marketplace
-
-### Technical Debt
-
-- Migrate to gRPC for inter-service communication (lower latency)
-- Implement GraphQL API for flexible client queries
-- Add A/B testing framework for model improvements
-- Build ML pipeline for continuous model retraining
-- Implement feature flags for gradual rollouts
+**Custom Components**:
+- ISL Grammar Converter (Python/Lambda)
+- Web Player (React/WebRTC)
+- Mobile SDK (iOS/Android native)
 
 ---
 
 **Version**: 1.0  
 **Last Updated**: February 14, 2026  
-**Status**: Active  
-**Owner**: Samvad AI Engineering Team
+**Status**: Active

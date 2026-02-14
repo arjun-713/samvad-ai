@@ -1,179 +1,78 @@
-# Samvad AI - Requirements Document
+# Samvad AI — Requirements Specification
 
-## 1. Overview
+## 1. Problem Statement
 
-### Problem Being Solved
+Over 63 million people in India are deaf or hard-of-hearing, and hundreds of millions face language barriers when consuming live digital content. Current accessibility solutions are inadequate:
 
-Over 63 million people in India are deaf or hard-of-hearing, and hundreds of millions face language barriers when consuming digital content. Live content—news, education, entertainment, emergency broadcasts—remains largely inaccessible due to:
+- No real-time sign language interpretation for live streams
+- Limited regional language support beyond English and Hindi
+- Post-production accessibility that excludes live content (news, education, emergency broadcasts)
+- Text-only subtitles that lack cultural context and fail to serve low-literacy populations
 
-- No real-time sign language interpretation
-- Limited regional language support
-- Text-only subtitles that lack cultural context
-- Post-production accessibility (not live)
+Samvad AI addresses this gap by providing real-time Indian Sign Language (ISL) avatar generation and multi-language neural dubbing for live video streams with sub-2-second latency.
 
-### Vision and Goals
+## 2. Objectives
 
-Build a real-time AI platform that makes live video streams accessible to everyone through:
+- Real-time ISL avatar generation with photorealistic 3D rendering at 60 FPS
+- Multi-language neural dubbing supporting 10+ Indian languages
+- End-to-end latency < 2 seconds (P95) from speech to avatar/dubbed audio
+- Scalable live streaming pipeline supporting 1000+ concurrent streams
+- Cultural transcreation preserving idioms, metaphors, and contextual meaning
+- WCAG 2.1 Level AA accessibility compliance
 
-- Indian Sign Language (ISL) avatars with <2s latency
-- Multi-language audio dubbing in 10+ Indian languages
-- Cultural transcreation (not just translation)
-- Scalable cloud infrastructure supporting 1000+ concurrent streams
+## 3. Functional Requirements
 
----
+- **Live video ingestion**: Accept RTMP, WebRTC, HLS, DASH streams from multiple sources
+- **Real-time speech recognition**: Convert audio to text with Indian accent support and speaker diarization
+- **Cultural transcreation**: Translate with cultural adaptation, preserving idioms and handling code-switching
+- **ISL grammar conversion**: Transform text to ISL grammatical structure with gloss notation and non-manual markers
+- **Avatar synthesis**: Render photorealistic 3D ISL avatar with synchronized facial expressions and smooth sign transitions
+- **Audio dubbing**: Generate neural voice synthesis with tone and emotion matching across 10+ languages
+- **Multiplexed stream delivery**: Synchronize avatar, audio, and subtitles with <100ms drift
+- **CDN distribution**: Deliver HLS/DASH adaptive streams via multi-CDN architecture with edge caching
 
-## 2. Target Users
+## 4. Non-Functional Requirements
 
-- **Deaf and hard-of-hearing users**: Need real-time ISL interpretation with cultural accuracy
-- **Blind users**: Require audio descriptions and regional language dubbing
-- **Low-literacy populations**: Prefer audio-first content in native language
-- **Regional language speakers**: Limited English proficiency, need local language support
-- **Content creators**: Want to make their streams accessible without technical complexity
+- **Latency constraints**: P50 < 1.5s, P95 < 2.0s, P99 < 3.0s end-to-end
+- **Scalability**: Auto-scale to 10,000 concurrent streams; handle 10x traffic spikes without degradation
+- **Reliability**: 99.5% uptime, MTTR < 5 minutes, data replicated across 3+ availability zones
+- **Cost efficiency**: GPU batching (4-16 streams per GPU), model quantization (FP16/INT8), predictive scaling
+- **Accessibility compliance**: WCAG 2.1 Level AA, keyboard navigation, screen reader compatible, high contrast UI
 
----
+## 5. Supported Inputs
 
-## 3. Key Features
+- **Streaming protocols**: RTMP, WebRTC, HLS, DASH
+- **Audio formats**: 16kHz mono PCM, AAC, Opus
+- **Source languages**: English, Hindi, and 8+ regional Indian languages with automatic detection
+- **Integration**: YouTube Live, Twitch, Facebook Live, custom RTMP endpoints
 
-- Real-time speech-to-text with Indian accent support
-- Cultural transcreation engine (idioms, metaphors, context preservation)
-- ISL grammar conversion (topic-comment structure, spatial grammar)
-- Photorealistic 3D ISL avatar at 60 FPS
-- Neural voice cloning for multi-language dubbing
-- Adaptive streaming (HLS/DASH) with CDN delivery
-- Picture-in-picture avatar overlay
-- Reverse mode: Sign-to-speech for deaf creators
-- Multi-platform support (web, mobile, browser extension)
+## 6. Supported Outputs
 
----
+- **ISL avatar overlay**: Picture-in-picture 3D avatar at 30-60 FPS with customizable appearance
+- **Multi-language audio tracks**: Neural-dubbed audio in 10+ Indian languages with voice cloning
+- **Adaptive bitrate packaged stream**: HLS/DASH with multiple quality levels (240p-1080p)
+- **Synchronized subtitles**: Timestamped text in source and target languages
+- **Fallback modes**: Text-only display if avatar rendering fails
 
-## 4. Functional Requirements
+## 7. Constraints
 
-### Real-Time Processing
-- Process live speech and generate ISL avatar within 2 seconds (P95)
-- Maintain sync between audio, subtitles, and avatar (<500ms drift)
-- Handle continuous streams up to 8 hours without degradation
+- **Real-time AI inference limits**: ASR models have 300-500ms inherent latency; avatar rendering requires 750ms per chunk
+- **GPU workload requirements**: Avatar rendering and neural dubbing require T4/A10/RTX GPUs; limited GPU availability constrains concurrent stream capacity
+- **Cloud infrastructure dependency**: Requires Kubernetes orchestration, Kafka messaging, Redis caching, and multi-region CDN
+- **Network constraints**: 2G/3G users experience buffering; rural areas have limited CDN edge presence
+- **Device constraints**: Older devices struggle with 60 FPS rendering; browser WebRTC compatibility varies
 
-### Streaming Support
-- Ingest RTMP, WebRTC, HLS streams
-- Integrate with YouTube Live, Twitch, Facebook Live
-- Support 1000+ concurrent streams at launch
+## 8. Success Metrics
 
-### Multi-Language Support
-- Speech recognition in English, Hindi, and 8+ regional languages
-- Audio dubbing in 10+ Indian languages
-- Automatic source language detection (95%+ accuracy)
-
-### Avatar Quality
-- Render at 30 FPS minimum, 60 FPS target
-- Smooth transitions between signs
-- Facial expressions synchronized with sign meaning
-- Customizable appearance (skin tone, clothing, background)
-
-### Error Handling
-- Display "Processing..." during temporary delays
-- Fall back to text-only if avatar rendering fails
-- Retry failed operations with exponential backoff (max 3 attempts)
-- Notify users of degraded service
-
----
-
-## 5. Non-Functional Requirements
-
-### Performance
-- End-to-end latency: <2s (P95), <1.5s (P50)
-- Speech-to-text: <500ms per chunk
-- Avatar rendering: <800ms per chunk
-- Web player load time: <3s on 4G
-
-### Scalability
-- Scale to 10,000 concurrent streams within 6 months
-- Auto-scale compute resources based on load
-- Handle 10x traffic spikes without downtime
-
-### Reliability
-- 99.5% uptime (excluding planned maintenance)
-- Mean time to recovery (MTTR): <5 minutes
-- Data replicated across 3+ availability zones
-- Automated health checks every 30 seconds
-
-### Security
-- TLS 1.3 for all data in transit
-- AES-256 encryption for data at rest
-- OAuth 2.0 authentication
-- Rate limiting: 100 req/min per user
-- Quarterly security audits
-
-### Privacy
-- No audio/video storage beyond processing requirements
-- Anonymized data for analytics
-- GDPR and Indian data protection compliance
-- User data deletion within 30 days on request
-
-### Accessibility
-- WCAG 2.1 Level AA compliance
-- Keyboard navigation support
-- Screen reader compatible
-- High contrast UI themes
-
----
-
-## 6. Constraints
-
-### Technical Constraints
-- GPU availability limits concurrent stream capacity
-- ASR models have 300-500ms inherent latency
-- Avatar rendering requires GPU compute
-- Network jitter may cause audio-video desync
-
-### Platform Constraints
-- Cloud provider quotas may restrict rapid scaling
-- CDN bandwidth costs impact profitability at scale
-- Regional data centers affect latency in remote areas
-
-### Device Constraints
-- Older devices struggle with 60 FPS rendering
-- Browser compatibility varies for WebRTC
-- Low-end devices require reduced quality settings
-
-### Network Constraints
-- 2G/3G users experience buffering
-- Firewall restrictions may block WebRTC
-- Rural areas have limited CDN edge presence
-
----
-
-## 7. Success Criteria
-
-### Latency Metrics
-- P50 latency: <1.5s
-- P95 latency: <2.0s
-- P99 latency: <3.0s
-
-### Quality Metrics
-- ISL comprehension: 90%+ accuracy by deaf users
-- Transcription accuracy: 95%+ WER for Indian accents
-- Dubbed audio naturalness: 85%+ MOS score
-- Cultural relevance: 80%+ users find transcreation appropriate
-
-### Scale Metrics
-- 1M+ users within first year
-- 1000+ concurrent streams at launch
-- 10,000+ concurrent streams within 6 months
-- 10+ Indian languages supported
-
-### Reliability Metrics
-- 99.5% uptime
-- <0.5% error rate
-- <5 minutes MTTR
-
-### User Satisfaction
-- Net Promoter Score (NPS): >50
-- User retention: >60% monthly active users
-- Average watch time: >10 minutes per session
+- **End-to-end latency**: < 2 seconds (P95), < 1.5 seconds (P50)
+- **System uptime**: 99.5% availability with < 5 minutes MTTR
+- **Accessibility accuracy**: 90%+ ISL comprehension by deaf users, 95%+ transcription accuracy (WER), 85%+ dubbed audio naturalness (MOS)
+- **Cost per stream hour**: Target < $0.50 per stream hour through GPU batching and model optimization
+- **Scale targets**: 1000+ concurrent streams at launch, 10,000+ within 6 months
+- **User satisfaction**: NPS > 50, 60%+ monthly retention, 10+ minutes average watch time
 
 ---
 
 **Version**: 1.0  
 **Last Updated**: February 14, 2026  
-**Status**: Active  
-**Owner**: Samvad AI Team
+**Status**: Active

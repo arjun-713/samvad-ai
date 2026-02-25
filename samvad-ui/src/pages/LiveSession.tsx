@@ -1,17 +1,54 @@
 import { useState } from 'react';
 import LanguageSelector from '../components/LanguageSelector';
+import { checkHealth, getStatus } from '../services/api';
 
 export default function LiveSession() {
   const [reverseMode, setReverseMode] = useState(false);
   const [signingSpeed, setSigningSpeed] = useState(1.2);
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [backendMessage, setBackendMessage] = useState<string>('');
 
   const avatars = [
     { name: 'Maya', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpOrIJ8SjitPHl9rZ6Goljshf4GdVIq2A4n5bD4JGthOdCxH6RzCEGRr9iKCn3aHlekUxxZjl6H06hUVNVLRvEvoOciidUbN5d6PuLd9lxJMg89iehZ5ib0UMdpFX6Mr4o9Nf_j06PL4-7UMOvxGR4R6dDQGcMaa4SyM3CQAu9WL1S7xugC1WnyLrfmoqGsbnRTren_CocH66cq0MOVJTJTC92wa5O6FXQ6E2BediarBDQdXoh2R9X7qU_40EgsHkcToNXrsrwDz-3' },
     { name: 'Arjun', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDdAv4av7cKSpRWMWCc7FrCNnmFzwnJ4Ns6uB3klNtXC41aQW4a1TqkWV7EbtRRS9fennSzgrMztMLCTNVxeC2aVnue7JPNva61gsdGkGrVGQRIW80vEAIEoHk6uHYdlGWBt_vylmH-ltvRWxUVfSi3FvKuTiNwRDtwetfdQVt7xjzf8SRBEKTr299hediDfxpR3Yy934VF8AJZyarub4QkEQ-vghIM_E_SMPov4F9wKcdhzT9CXdey-CLgGfSEdp90_ybJgpyzq2bm' },
     { name: 'Priya', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBdQ2s3P0uvl06X3lTlXfoUjPJ3whdftr44_63Elbl152yCZZXA-j5uj46BL7KFeSrTtUDUheXt0Ab3200CirZScufwWNzRRs1_aesSWgj_V4QqjiCgoCCt7GzAlCU-2o-Vpp8gO35XhZw9cEEFfPbbuqFeqyJQYewn4NQJbm5ymHfdYV_lEc3wQ_TX7DswnyWL_gOBQFgmd78FnGzox1xLDtzZhkgZOL634olgf0tDiGca9osUAzONlrPuqfBatt-ytb1AWrYP8LYv' }
   ];
+
+  const handleConnectStream = async () => {
+    setConnectionStatus('connecting');
+    setBackendMessage('Connecting to backend...');
+    
+    try {
+      // Test health endpoint
+      const healthResponse = await checkHealth();
+      console.log('Health Check Response:', healthResponse);
+      
+      // Get system status
+      const statusResponse = await getStatus();
+      console.log('Status Response:', statusResponse);
+      
+      setConnectionStatus('connected');
+      setBackendMessage(`✓ ${healthResponse.status}`);
+      
+      // Show success message for 3 seconds
+      setTimeout(() => {
+        setConnectionStatus('idle');
+        setBackendMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Connection failed:', error);
+      setConnectionStatus('error');
+      setBackendMessage('✗ Backend connection failed. Is the server running?');
+      
+      // Reset after 5 seconds
+      setTimeout(() => {
+        setConnectionStatus('idle');
+        setBackendMessage('');
+      }, 5000);
+    }
+  };
 
   return (
     <main className="relative z-10 flex-1 w-full max-w-[1440px] mx-auto p-6 md:p-12 md:pt-4 grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -54,16 +91,61 @@ export default function LiveSession() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-2">
-          <button className="relative group overflow-hidden rounded-xl px-6 py-3 bg-gradient-to-r from-secondary/10 to-primary/10 hover:from-secondary/20 hover:to-primary/20 transition-all w-full sm:w-auto flex-1 max-w-sm border border-transparent">
+          <button 
+            onClick={handleConnectStream}
+            disabled={connectionStatus === 'connecting'}
+            className={`relative group overflow-hidden rounded-xl px-6 py-3 transition-all w-full sm:w-auto flex-1 max-w-sm border ${
+              connectionStatus === 'connected' 
+                ? 'bg-green-500/20 border-green-500/50' 
+                : connectionStatus === 'error'
+                ? 'bg-red-500/20 border-red-500/50'
+                : 'bg-gradient-to-r from-secondary/10 to-primary/10 hover:from-secondary/20 hover:to-primary/20 border-transparent'
+            } ${connectionStatus === 'connecting' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
             <div className="absolute inset-0 rounded-xl border border-transparent group-hover:border-primary/30 transition-colors"></div>
             <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-secondary to-primary group-hover:w-full transition-all duration-500"></div>
             <div className="flex items-center justify-center gap-3 relative z-10">
-              <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">
-                videocam
-              </span>
-              <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connect Live Stream</span>
+              {connectionStatus === 'connecting' ? (
+                <>
+                  <span className="material-symbols-outlined text-primary animate-spin">
+                    progress_activity
+                  </span>
+                  <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connecting...</span>
+                </>
+              ) : connectionStatus === 'connected' ? (
+                <>
+                  <span className="material-symbols-outlined text-green-600">
+                    check_circle
+                  </span>
+                  <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connected!</span>
+                </>
+              ) : connectionStatus === 'error' ? (
+                <>
+                  <span className="material-symbols-outlined text-red-600">
+                    error
+                  </span>
+                  <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connection Failed</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">
+                    videocam
+                  </span>
+                  <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connect Live Stream</span>
+                </>
+              )}
             </div>
           </button>
+
+          {backendMessage && (
+            <div className={`text-sm font-medium ${
+              connectionStatus === 'connected' ? 'text-green-600 dark:text-green-400' : 
+              connectionStatus === 'error' ? 'text-red-600 dark:text-red-400' : 
+              'text-[#5a4d48] dark:text-stone-300'
+            }`}>
+              {backendMessage}
+            </div>
+          )}
 
           <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-3">

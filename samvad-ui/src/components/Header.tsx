@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BackendStatus from './BackendStatus';
 
 interface HeaderProps {
   currentPage: string;
@@ -77,6 +78,7 @@ export default function Header({ currentPage, onPageChange, darkMode, onDarkMode
             </span>
           </button>
         </div>
+        <BackendStatus />
         <button className="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold shadow-glow hover:shadow-lg transition-all flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px]">accessibility_new</span>
           <span>Start Session</span>

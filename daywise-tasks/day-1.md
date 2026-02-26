@@ -1,0 +1,143 @@
+# Day 1: Foundations & Setup
+**Date:** Feb 25, 2026
+
+## Goal
+Get the core infrastructure running: GitHub repo, React UI, Python backend, and AWS security locked down.
+
+## End of Day Deliverables
+- [x] GitHub repo created and linked to Kiro IDE
+- [x] React UI running locally (visual only, no logic yet)
+- [ ] AWS budget alert configured ($100)
+- [x] Python backend responding to health checks from frontend
+
+---
+
+## Phase 1: AWS Security (DO THIS FIRST)
+
+### AWS Credits & Budget
+- [ ] Apply $100 promo code to AWS account
+- [ ] Create Cost Budget in AWS Budgets
+  - Budget amount: $100
+  - Alert thresholds: 50%, 75%, 90%
+  - Email notifications enabled
+
+### IAM Configuration
+- [ ] Create IAM user: `samvad-dev`
+- [ ] Generate access key + secret key (programmatic access)
+- [ ] Attach policies:
+  - Bedrock Full Access
+  - Transcribe Full Access
+  - Polly Full Access
+  - S3 Full Access
+- [ ] Store credentials in `.env` file
+- [ ] Add `.env` to `.gitignore`
+
+**Security Check:** Never commit AWS keys to Git. Ever.
+
+---
+
+## Phase 2: Frontend (React) ✅
+
+### Project Setup
+- [x] Initialize React project (Vite + TypeScript)
+
+### UI Implementation
+- [x] Generate UI components using Stitch prompt
+- [x] Build layout:
+  - Left: Video player placeholder with PIP signer view
+  - Right: AI controls (avatar, text input, translate button)
+- [x] Add interactive elements (toggles, buttons, sliders)
+- [x] Verify visual functionality (no backend logic yet)
+
+### Git Commit
+- [x] `git add .`
+- [x] `git commit -m "feat: initial UI layout with Samvad AI interface"`
+- [ ] `git push`
+
+---
+
+## Phase 3: Backend (Python) ✅
+
+### Environment Setup
+- [x] Create backend folder
+- [x] Set up virtual environment
+  ```bash
+  py -m venv venv
+  venv\Scripts\activate
+  ```
+
+### Dependencies
+- [x] Install packages
+  ```bash
+  pip install fastapi uvicorn boto3 python-dotenv
+  ```
+
+### API Implementation
+- [x] Create `main.py` with health check endpoint
+  ```python
+  @app.get("/api/health")
+  def health_check():
+      return {"status": "Samvad Backend is alive"}
+  ```
+- [x] Configure CORS for localhost frontend (ports 5173, 5174, 3000)
+
+### Additional Features
+- [x] Created `/api/status` endpoint for system status
+- [x] Added `.env.example` for configuration template
+- [x] Created comprehensive README.md
+- [x] Configured `.gitignore` for Python projects
+
+### Git Commit
+- [x] `git add .`
+- [x] `git commit -m "feat: initial backend setup with FastAPI, health check endpoint, and CORS configuration"`
+- [ ] `git push`
+
+**Backend running at:** `http://localhost:8000`
+**API Docs:** `http://localhost:8000/docs`
+
+---
+
+## Phase 4: Frontend-Backend Integration ✅
+
+### Connection Test
+- [x] Add fetch request in React app (created API service layer)
+- [x] Wire "Connect Live Stream" button to `/api/health`
+- [x] Verify response in browser console
+- [x] Confirm CORS is working
+
+### Additional Features
+- [x] Created API service layer (`services/api.ts`)
+- [x] Added TypeScript interfaces for API responses
+- [x] Implemented connection status states (idle, connecting, connected, error)
+- [x] Added visual feedback for connection states
+- [x] Created BackendStatus component with auto-refresh
+- [x] Added backend status indicator in header
+- [x] Created comprehensive integration test guide
+
+### Testing
+- [x] Backend responds to health checks
+- [x] Frontend successfully calls backend API
+- [x] CORS configured correctly
+- [x] No console errors
+- [x] Visual feedback working
+
+**Integration Complete!** 
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8000`
+- API Docs: `http://localhost:8000/docs`
+
+---
+
+## End of Day Security Checklist
+- [ ] No AWS keys in code
+- [ ] `.env` in `.gitignore`
+- [ ] AWS budget alert active
+- [ ] Code pushed to GitHub
+- [ ] IAM user (not root) configured
+
+---
+
+## Notes
+- Backend runs on different port than frontend (e.g., :8000 vs :3000)
+- MediaLive permissions will be added later
+- Keep commits small and descriptive

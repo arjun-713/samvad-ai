@@ -59,7 +59,7 @@ sio = socketio.AsyncServer(
 register_handlers(sio)
 
 # Mount Socket.IO on FastAPI
-socket_app = socketio.ASGIApp(sio, other_app=app)
+socket_app = socketio.ASGIApp(sio, app)
 
 # ─── Root redirect ───
 @app.get("/")

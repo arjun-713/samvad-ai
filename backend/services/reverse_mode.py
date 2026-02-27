@@ -28,8 +28,8 @@ class ReverseModeService:
                 min_detection_confidence=0.5,
             )
             self._mp_drawing = mp.solutions.drawing_utils
-        except ImportError:
-            print("⚠ MediaPipe not available. Reverse mode will use mock.")
+        except Exception as e:
+            print(f"⚠ MediaPipe not available ({e}). Reverse mode will use mock.")
             self._mp_hands = None
 
     def process_frame(self, frame_base64: str) -> dict:

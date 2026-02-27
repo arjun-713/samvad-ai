@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-socketio
+python-multipart
+python-dotenv
+pydantic
+aiofiles
+httpx
+anthropic
+gtts
+numpy
+pillow
+boto3

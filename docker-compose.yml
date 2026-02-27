@@ -6,9 +6,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/uploads:/app/uploads
-      - ./backend/outputs:/app/outputs
-      - ./backend/assets:/app/assets
+      - backend-uploads:/app/uploads
+      - backend-outputs:/app/outputs
+      - backend-assets:/app/assets
     env_file:
       - ./backend/.env
     environment:
@@ -22,7 +22,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     restart: unless-stopped
 
   frontend:
@@ -31,11 +31,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - VITE_API_URL=http://backend:8000
-      - VITE_WS_URL=ws://backend:8000
-      - VITE_ENV=local
     depends_on:
       backend:
         condition: service_started
     restart: unless-stopped
+
+# Named volumes (persist across rebuilds, platform-independent)
+volumes:
+  backend-uploads:
+  backend-outputs:
+  backend-assets:

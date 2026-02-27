@@ -1,1 +1,1 @@
-# Services package for AWS integrations
+# Services package

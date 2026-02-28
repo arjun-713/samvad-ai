@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 import logging
@@ -7,6 +8,7 @@ import logging
 from services.s3 import S3Service
 from services.transcribe import TranscribeService
 from models.schemas import TranscribeResponse, ErrorResponse
+from routes.text_to_isl import router as text_to_isl_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +39,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount ISL clips static files and register text-to-isl route
+app.mount("/clips", StaticFiles(directory="isl_clips"), name="clips")
+app.include_router(text_to_isl_router)
 
 @app.get("/")
 def root():

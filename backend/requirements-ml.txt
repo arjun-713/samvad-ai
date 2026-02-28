@@ -3,4 +3,4 @@ torch --index-url https://download.pytorch.org/whl/cpu
 openai-whisper
 spacy
 opencv-python-headless
-mediapipe
+mediapipe==0.10.14

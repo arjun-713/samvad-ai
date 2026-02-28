@@ -1,12 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { Video, VideoOff, Mic, MicOff } from 'lucide-react'
-import ISLAvatar from './ISLAvatar'
 import StatusPanel from './StatusPanel'
 import LanguageSelector from './LanguageSelector'
 import { useWebSocket } from '../hooks/useWebSocket'
+import type { ISLResult } from '../types'
 
-export default function LiveStream() {
+interface LiveStreamProps {
+    onResult: (result: ISLResult | null) => void
+}
+
+export default function LiveStream({ onResult }: LiveStreamProps) {
     const [isStreaming, setIsStreaming] = useState(false)
     const [language, setLanguage] = useState('hi-IN')
     const [isMuted, setIsMuted] = useState(false)
@@ -17,6 +21,13 @@ export default function LiveStream() {
     const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const { isConnected, latestISL, status, sendAudioChunk, startLiveStream, stopLiveStream } = useWebSocket()
+
+    // Pass the latest ISL result up to App so the HeroAvatarStage can play it
+    useEffect(() => {
+        if (latestISL) {
+            onResult(latestISL)
+        }
+    }, [latestISL, onResult])
 
     const blobToBase64 = (blob: Blob): Promise<string> =>
         new Promise((res) => {
@@ -71,12 +82,13 @@ export default function LiveStream() {
     const handleStop = useCallback(() => {
         setIsStreaming(false)
         stopLiveStream()
+        onResult(null) // Clear avatar stage
         if (intervalRef.current) clearTimeout(intervalRef.current)
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop()
         }
         mediaRecorderRef.current = null
-    }, [stopLiveStream])
+    }, [stopLiveStream, onResult])
 
     const handleUserMedia = useCallback((stream: MediaStream) => {
         startAudioCapture(stream)
@@ -93,33 +105,39 @@ export default function LiveStream() {
     }, [])
 
     return (
-        <div className="h-full flex flex-col gap-4 animate-fade-in">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#F7FAFC] flex items-center gap-2">
-                    <Video className="w-5 h-5 text-[#A3E635]" />
-                    Live Stream
-                    {isStreaming && (
-                        <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-red-500/20 rounded-full">
-                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-xs text-red-400 font-semibold">LIVE</span>
-                        </span>
-                    )}
-                </h2>
-                <div className="flex items-center gap-3">
-                    <LanguageSelector selectedLanguage={language} onLanguageChange={setLanguage} />
-                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium
-            ${isConnected ? 'bg-[#68D391]/20 text-[#68D391]' : 'bg-red-500/20 text-red-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#68D391]' : 'bg-red-400'}`} />
-                        {isConnected ? 'Connected' : 'Disconnected'}
+        <div className="flex flex-col h-full space-y-6">
+
+            {/* Control Panel Glass Card */}
+            <div className="glass-panel bg-white/60 dark:bg-[#151928]/60 rounded-[24px] p-6 shadow-xl flex flex-col relative overflow-hidden group border-t border-white/20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent opacity-50"></div>
+
+                {/* Header inside card */}
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-display font-semibold text-gray-800 dark:text-white flex items-center">
+                        <Video className="w-5 h-5 text-[#F59E0B] mr-2" />
+                        Live Stream
+                        {isStreaming && (
+                            <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full">
+                                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] text-red-500 font-bold uppercase tracking-widest">Live</span>
+                            </span>
+                        )}
+                    </h2>
+
+                    <div className="flex items-center gap-3">
+                        <LanguageSelector selectedLanguage={language} onLanguageChange={setLanguage} />
+                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest
+                            ${isConnected
+                                ? 'bg-green-500/10 border-green-500/30 text-green-500'
+                                : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                            {isConnected ? 'Connected' : 'Disconnected'}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-4">
-                {/* Camera feed */}
-                <div className="flex-1 relative rounded-xl overflow-hidden bg-[#1A1F2E] border border-[#2D3748]">
+                {/* Main Camera Feed */}
+                <div className="w-full aspect-video relative rounded-xl overflow-hidden bg-black/80 border border-white/10 shadow-inner">
                     {isStreaming ? (
                         <>
                             <Webcam
@@ -129,93 +147,64 @@ export default function LiveStream() {
                                 videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
                                 onUserMedia={handleUserMedia}
                             />
-
-                            {/* ISL Avatar PiP overlay */}
-                            <div className="absolute bottom-4 right-4 w-1/4 min-w-[160px] rounded-xl border-2 border-[#A3E635]/60 overflow-hidden shadow-2xl glow-green">
-                                <ISLAvatar result={latestISL} className="h-48" showGloss={false} />
-                            </div>
-
-                            {/* Gloss text overlay */}
+                            {/* Gloss Subtitles Overlay inside the camera feed */}
                             {latestISL && (
-                                <div className="absolute bottom-4 left-4 right-[30%]">
-                                    <div className="bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
-                                        <p className="text-[#A3E635] font-mono-isl text-sm">{latestISL.gloss}</p>
+                                <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+                                    <div className="bg-black/60 backdrop-blur-md pb-1 pt-1.5 px-4 rounded-full border border-white/10">
+                                        <p className="text-[#F59E0B] font-display font-bold tracking-wide text-sm">{latestISL.gloss}</p>
                                     </div>
                                 </div>
                             )}
-
-                            {/* LIVE badge */}
-                            <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                                <span className="text-white text-xs font-bold tracking-wider uppercase">Live</span>
-                            </div>
                         </>
                     ) : (
-                        <div className="w-full h-full min-h-[360px] flex flex-col items-center justify-center gap-4">
-                            <div className="w-20 h-20 rounded-full bg-[#A3E635]/10 flex items-center justify-center">
-                                <Video className="w-8 h-8 text-[#A3E635]" />
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                            <div className="w-16 h-16 rounded-full bg-[#F59E0B]/10 flex items-center justify-center mb-4">
+                                <Video className="w-6 h-6 text-[#F59E0B]" />
                             </div>
-                            <p className="text-[#A0AEC0] text-sm font-medium">Click "Start Live Stream" to begin</p>
-                            <p className="text-[#4A5568] text-xs max-w-sm text-center">
-                                Your camera feed will be captured, audio transcribed every 3 seconds,
-                                and real-time ISL avatar overlay will appear in the bottom-right corner.
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">
+                                Camera feed will appear here.<br />Audio is captured and transcribed every 3s.
                             </p>
                         </div>
                     )}
                 </div>
-
-                {/* Side panel */}
-                <div className="w-full lg:w-[280px] flex flex-col gap-3">
-                    {/* Pipeline status */}
-                    <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                        <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-3">Pipeline Status</p>
-                        <StatusPanel status={status} />
-                    </div>
-
-                    {/* ISL Avatar (larger view) */}
-                    <div className="bg-[#1A1F2E] rounded-xl border border-[#2D3748] overflow-hidden">
-                        <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider p-3 pb-0">ISL Avatar</p>
-                        <ISLAvatar result={latestISL} className="h-52" showGloss={true} />
-                    </div>
-                </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-3">
+            {/* Action Buttons */}
+            <div className="flex gap-3">
                 <button
                     onClick={isStreaming ? handleStop : handleStart}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all
-            ${isStreaming
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
-                            : 'bg-[#A3E635] text-[#0F1117] hover:bg-[#BEF264] shadow-lg shadow-[#A3E635]/20'
+                    className={`flex-1 py-4 rounded-full shadow-lg font-display font-bold text-lg tracking-wide transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center group relative overflow-hidden ${isStreaming
+                            ? 'bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
+                            : 'bg-[linear-gradient(135deg,#F59E0B_0%,#D97706_100%)] text-white shadow-[#F59E0B]/20 hover:shadow-[#F59E0B]/40'
                         }`}
                 >
+                    {!isStreaming && <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-in-out -translate-x-full skew-x-12"></span>}
                     {isStreaming ? (
-                        <>
-                            <VideoOff className="w-4 h-4" />
-                            Stop Stream
-                        </>
+                        <><VideoOff className="w-5 h-5 mr-no-gap mr-2" /> Stop Stream</>
                     ) : (
-                        <>
-                            <Video className="w-4 h-4" />
-                            Start Live Stream
-                        </>
+                        <><Video className="w-5 h-5 mr-no-gap mr-2" /> Start Stream</>
                     )}
                 </button>
 
                 {isStreaming && (
                     <button
                         onClick={() => setIsMuted(!isMuted)}
-                        className={`p-3 rounded-xl border transition-all
-              ${isMuted
-                                ? 'bg-red-500/20 border-red-500/30 text-red-400'
-                                : 'border-[#2D3748] text-[#A0AEC0] hover:bg-[#2D3748]/50'
+                        className={`w-16 flex items-center justify-center rounded-full border transition-all
+                            ${isMuted
+                                ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
                             }`}
                     >
                         {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                     </button>
                 )}
             </div>
+
+            {/* Pipeline Status */}
+            <div className="pt-2">
+                <StatusPanel status={status} />
+            </div>
+
         </div>
     )
 }

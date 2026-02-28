@@ -1,0 +1,9 @@
+﻿src/App.tsx(43,17): error TS2741: Property 'onResult' is missing in type '{}' but required in type 'LiveStreamProps'.
+src/components/HeroAvatarStage.tsx(1,10): error TS6133: 'Play' is declared but its value is never read.
+src/components/HeroAvatarStage.tsx(1,16): error TS6133: 'Pause' is declared but its value is never read.
+src/components/HeroAvatarStage.tsx(1,23): error TS6133: 'Maximize' is declared but its value is never read.
+src/components/HeroAvatarStage.tsx(1,33): error TS6133: 'RotateCcw' is declared but its value is never read.
+src/components/HeroAvatarStage.tsx(1,44): error TS6133: 'Settings' is declared but its value is never read.
+src/components/HeroAvatarStage.tsx(9,51): error TS6133: 'isPlaying' is declared but its value is never read.
+src/components/TextToISL.tsx(24,13): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/components/TextToISL.tsx(30,13): error TS1345: An expression of type 'void' cannot be tested for truthiness.

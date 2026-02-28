@@ -17,6 +17,7 @@ export function useISLPipeline() {
             const res = await islApi.textToISL(text, language)
             setResult(res.data)
             setStatus({ stage: 'complete', message: 'Done!', progress: 100 })
+            return res.data
         } catch (e: any) {
             const msg = e.response?.data?.detail || 'Something went wrong. Is the backend running?'
             setError(msg)

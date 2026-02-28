@@ -1,12 +1,15 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Upload, FileVideo, X, Play } from 'lucide-react'
-import ISLAvatar from './ISLAvatar'
 import StatusPanel from './StatusPanel'
 import LanguageSelector from './LanguageSelector'
 import { islApi } from '../api/client'
 import type { ProcessedVideo, PipelineStatus, ISLResult } from '../types'
 
-export default function VideoUpload() {
+interface VideoUploadProps {
+    onResult?: (result: ISLResult | null) => void
+}
+
+export default function VideoUpload({ onResult }: VideoUploadProps) {
     const [file, setFile] = useState<File | null>(null)
     const [uploadProgress, setUploadProgress] = useState(0)
     const [status, setStatus] = useState<PipelineStatus>({ stage: 'idle', message: '', progress: 0 })
@@ -34,6 +37,7 @@ export default function VideoUpload() {
         setFile(selectedFile)
         setError(null)
         setResult(null)
+        if (onResult) onResult(null)
     }
 
     const handleDrop = useCallback((e: React.DragEvent) => {
@@ -47,6 +51,7 @@ export default function VideoUpload() {
         if (!file) return
         setError(null)
         setResult(null)
+        if (onResult) onResult(null)
 
         try {
             setStatus({ stage: 'transcribing', message: 'Uploading and processing...', progress: 10 })
@@ -64,19 +69,26 @@ export default function VideoUpload() {
         }
     }
 
-    // Find current ISL result based on playback time
+    // Find current ISL result based on playback time and bubble to parent
     const currentSubtitle = result?.subtitles?.find(
         s => currentTime >= s.start && currentTime <= s.end
     )
-    const currentISLResult: ISLResult | null = currentSubtitle ? {
-        gloss: currentSubtitle.isl_gloss,
-        emotional_tone: currentSubtitle.emotional_tone || 'neutral',
-        avatar_url: currentSubtitle.avatar_url || '',
-        duration_seconds: currentSubtitle.end - currentSubtitle.start,
-        cultural_notes: [],
-        name_signs: {},
-        emphasis_words: [],
-    } : null
+
+    useEffect(() => {
+        if (currentSubtitle && onResult) {
+            onResult({
+                gloss: currentSubtitle.isl_gloss,
+                emotional_tone: currentSubtitle.emotional_tone || 'neutral',
+                avatar_url: currentSubtitle.avatar_url || '',
+                duration_seconds: currentSubtitle.end - currentSubtitle.start,
+                cultural_notes: [],
+                name_signs: {},
+                emphasis_words: [],
+            })
+        } else if (!currentSubtitle && onResult && result) {
+            onResult(null) // Only clear if we are in results view but have no subtitle
+        }
+    }, [currentSubtitle, onResult, result])
 
     const handleDubChange = (url: string) => {
         setSelectedDub(url)
@@ -94,188 +106,186 @@ export default function VideoUpload() {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     }
 
+    const resetUpload = () => {
+        setResult(null);
+        setFile(null);
+        setStatus({ stage: 'idle', message: '', progress: 0 });
+        if (onResult) onResult(null);
+    }
+
     return (
-        <div className="h-full flex flex-col gap-4 animate-fade-in">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#F7FAFC] flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-[#A3E635]" />
-                    Video Upload
-                </h2>
-                <LanguageSelector selectedLanguage={language} onLanguageChange={setLanguage} />
-            </div>
+        <div className="flex flex-col h-full space-y-6">
 
-            {!result ? (
-                <>
-                    {/* Drop zone */}
-                    <div
-                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`flex-1 min-h-[240px] flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed cursor-pointer transition-all
-              ${isDragging
-                                ? 'border-[#A3E635] bg-[#A3E635]/5'
-                                : file
-                                    ? 'border-[#A3E635]/30 bg-[#1A1F2E]'
-                                    : 'border-[#2D3748] bg-[#1A1F2E] hover:border-[#4A5568]'
-                            }`}
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".mp4,.avi,.mov,.mkv"
-                            onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]) }}
-                            className="hidden"
-                        />
+            {/* Main Glass Card */}
+            <div className="flex-1 glass-panel bg-white/60 dark:bg-[#151928]/60 rounded-[24px] p-6 shadow-xl flex flex-col relative overflow-hidden group border-t border-white/20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent opacity-50"></div>
 
-                        {file ? (
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-lg bg-[#A3E635]/10 flex items-center justify-center">
-                                    <FileVideo className="w-6 h-6 text-[#A3E635]" />
-                                </div>
-                                <div>
-                                    <p className="text-[#F7FAFC] font-medium text-sm">{file.name}</p>
-                                    <p className="text-[#A0AEC0] text-xs">{formatSize(file.size)}</p>
-                                </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setFile(null); setError(null) }}
-                                    className="p-1.5 hover:bg-[#2D3748] rounded-lg text-[#A0AEC0] hover:text-red-400 transition-colors"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="w-16 h-16 rounded-full bg-[#A3E635]/10 flex items-center justify-center">
-                                    <Upload className="w-7 h-7 text-[#A3E635]" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-[#F7FAFC] font-medium">Drop a video file here</p>
-                                    <p className="text-[#4A5568] text-xs mt-1">or click to browse • MP4, AVI, MOV, MKV (max 100MB)</p>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                {/* Header inside card */}
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-display font-semibold text-gray-800 dark:text-white flex items-center">
+                        <Upload className="w-5 h-5 text-[#F59E0B] mr-2" />
+                        Video Upload
+                    </h2>
+                    <LanguageSelector selectedLanguage={language} onLanguageChange={setLanguage} />
+                </div>
 
-                    {/* Pipeline status */}
-                    {status.stage !== 'idle' && (
-                        <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                            <StatusPanel status={status} />
-                            {uploadProgress > 0 && uploadProgress < 100 && (
-                                <div className="mt-3 h-2 bg-[#2D3748] rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-[#A3E635] rounded-full transition-all"
-                                        style={{ width: `${uploadProgress}%` }}
-                                    />
+                {!result ? (
+                    <div className="flex flex-col h-full gap-4 justify-center">
+                        {/* Drop zone */}
+                        <div
+                            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                            onDragLeave={() => setIsDragging(false)}
+                            onDrop={handleDrop}
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`w-full min-h-[200px] flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all
+                                ${isDragging
+                                    ? 'border-[#F59E0B] bg-[#F59E0B]/5'
+                                    : file
+                                        ? 'border-[#F59E0B]/30 bg-white/10 dark:bg-[#1A1F2E]/80'
+                                        : 'border-gray-300 dark:border-[#2D3748] bg-white/5 dark:bg-[#1A1F2E]/50 hover:border-gray-400 dark:hover:border-[#4A5568]'
+                                }`}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".mp4,.avi,.mov,.mkv"
+                                onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]) }}
+                                className="hidden"
+                            />
+
+                            {file ? (
+                                <div className="flex items-center gap-4 p-4">
+                                    <div className="w-12 h-12 rounded-full bg-[#F59E0B]/10 flex items-center justify-center isolate">
+                                        <FileVideo className="w-6 h-6 text-[#F59E0B]" />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{file.name}</p>
+                                        <p className="text-gray-500 text-xs">{formatSize(file.size)}</p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setFile(null); setError(null) }}
+                                        className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-gray-500 hover:text-red-500 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="w-16 h-16 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
+                                        <Upload className="w-7 h-7 text-[#F59E0B]" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-gray-800 dark:text-gray-200 font-medium">Drop a video file here</p>
+                                        <p className="text-gray-500 text-xs mt-1">or click to browse • MP4, AVI, MOV, MKV (max 100MB)</p>
+                                    </div>
+                                </>
                             )}
                         </div>
-                    )}
 
-                    {/* Process button */}
-                    <button
-                        onClick={processVideo}
-                        disabled={!file || status.stage !== 'idle'}
-                        className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2
-              ${!file || status.stage !== 'idle'
-                                ? 'bg-[#2D3748] text-[#4A5568] cursor-not-allowed'
-                                : 'bg-[#A3E635] text-[#0F1117] hover:bg-[#BEF264] shadow-lg shadow-[#A3E635]/20'
-                            }`}
-                    >
-                        <Play className="w-4 h-4" />
-                        Process Video
-                    </button>
-                </>
-            ) : (
-                /* Results view */
-                <div className="flex-1 flex flex-col lg:flex-row gap-4">
-                    {/* Video player */}
-                    <div className="flex-1 relative rounded-xl overflow-hidden bg-black">
-                        <video
-                            ref={videoRef}
-                            src={result.original_url}
-                            className="w-full h-full object-contain"
-                            controls
-                            onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
-                        />
-
-                        {/* ISL Avatar PiP */}
-                        <div className="absolute bottom-16 right-4 w-1/4 min-w-[140px] rounded-xl border-2 border-[#A3E635]/60 overflow-hidden shadow-2xl">
-                            <ISLAvatar result={currentISLResult} className="h-40" showGloss={false} />
+                        {/* Process button */}
+                        <div className="mt-auto pt-4 border-t border-gray-200 dark:border-white/5">
+                            <button
+                                onClick={processVideo}
+                                disabled={!file || status.stage !== 'idle'}
+                                className={`w-full py-4 rounded-full shadow-lg font-display font-bold text-lg tracking-wide transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center group relative overflow-hidden ${!file || status.stage !== 'idle'
+                                        ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+                                        : 'bg-[linear-gradient(135deg,#F59E0B_0%,#D97706_100%)] text-white shadow-[#F59E0B]/20 hover:shadow-[#F59E0B]/40'
+                                    }`}
+                            >
+                                {!(!file || status.stage !== 'idle') && <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-in-out -translate-x-full skew-x-12"></span>}
+                                <Play className="w-5 h-5 mr-2" />
+                                Process Video
+                            </button>
                         </div>
-
-                        {/* Gloss subtitle */}
-                        {currentSubtitle && (
-                            <div className="absolute bottom-16 left-4 right-[30%]">
-                                <span className="bg-black/70 text-[#A3E635] font-mono-isl text-sm px-3 py-1 rounded">
-                                    {currentSubtitle.isl_gloss}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Hidden dubbed audio */}
-                        {selectedDub && <audio ref={audioRef} src={selectedDub} />}
                     </div>
-
-                    {/* Side panel */}
-                    <div className="w-full lg:w-[280px] flex flex-col gap-3 overflow-y-auto">
-                        {/* Stats */}
-                        <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                            <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-2">Processing Summary</p>
-                            <div className="space-y-1.5 text-xs">
-                                <div className="flex justify-between"><span className="text-[#A0AEC0]">Segments</span><span className="text-[#F7FAFC] font-medium">{result.total_segments || result.subtitles?.length}</span></div>
-                                <div className="flex justify-between"><span className="text-[#A0AEC0]">Duration (ms)</span><span className="text-[#F7FAFC] font-medium">{result.processing_time_ms || '—'}</span></div>
-                            </div>
+                ) : (
+                    /* Results view */
+                    <div className="flex flex-col h-full gap-4 overflow-y-auto pr-2">
+                        {/* Source Video player */}
+                        <div className="w-full aspect-video relative rounded-2xl overflow-hidden bg-black shadow-inner border border-white/10">
+                            <video
+                                ref={videoRef}
+                                src={result.original_url}
+                                className="w-full h-full object-contain"
+                                controls
+                                onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
+                            />
+                            {/* Hidden dubbed audio */}
+                            {selectedDub && <audio ref={audioRef} src={selectedDub} />}
                         </div>
 
-                        {/* Dubbed audio */}
-                        {result.dubbed_audio && result.dubbed_audio.length > 0 && (
-                            <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                                <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-2">Dubbed Audio</p>
-                                <div className="space-y-2">
-                                    {result.dubbed_audio.map((dub) => (
-                                        <button
-                                            key={dub.language_code}
-                                            onClick={() => handleDubChange(dub.url)}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all
-                        ${selectedDub === dub.url
-                                                    ? 'bg-[#A3E635]/20 text-[#A3E635] border border-[#A3E635]/40'
-                                                    : 'bg-[#0F1117] text-[#A0AEC0] border border-[#2D3748] hover:border-[#4A5568]'
-                                                }`}
-                                        >
-                                            🔊 {dub.language}
-                                        </button>
-                                    ))}
+                        {/* Results Controls List */}
+                        <div className="flex flex-col gap-3">
+                            {/* Dubbed audio selection */}
+                            {result.dubbed_audio && result.dubbed_audio.length > 0 && (
+                                <div className="bg-white/40 dark:bg-white/5 rounded-xl p-3 border border-gray-200 dark:border-white/10">
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Dubbed Audio Track</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {result.dubbed_audio.map((dub) => (
+                                            <button
+                                                key={dub.language_code}
+                                                onClick={() => handleDubChange(dub.url)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${selectedDub === dub.url
+                                                        ? 'bg-[#F59E0B]/20 text-[#D97706] dark:text-[#F59E0B] border border-[#F59E0B]/40'
+                                                        : 'bg-white/50 dark:bg-white/10 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:border-gray-400 dark:hover:border-white/30'
+                                                    }`}
+                                            >
+                                                🔊 {dub.language}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Transcript */}
-                        {result.full_transcript && (
-                            <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                                <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-2">Full Transcript</p>
-                                <p className="text-xs text-[#A0AEC0] leading-relaxed">{result.full_transcript}</p>
-                            </div>
-                        )}
+                            {/* Transcript */}
+                            {result.full_transcript && (
+                                <div className="bg-white/40 dark:bg-white/5 rounded-xl p-3 border border-gray-200 dark:border-white/10">
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex justify-between">
+                                        <span>Full Transcript</span>
+                                        <span className="font-mono lowercase opacity-60">
+                                            {result.total_segments || result.subtitles?.length} segments
+                                        </span>
+                                    </p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-h-32 overflow-y-auto">
+                                        {result.full_transcript}
+                                    </p>
+                                </div>
+                            )}
 
-                        {/* New upload */}
-                        <button
-                            onClick={() => { setResult(null); setFile(null); setStatus({ stage: 'idle', message: '', progress: 0 }) }}
-                            className="text-xs font-semibold text-[#A0AEC0] hover:text-[#A3E635] underline self-center transition-colors"
-                        >
-                            Upload another video
-                        </button>
+                            {/* Reset Actions */}
+                            <button
+                                onClick={resetUpload}
+                                className="mt-2 py-3 rounded-xl border border-gray-300 dark:border-[#2D3748] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 text-sm font-semibold transition-colors"
+                            >
+                                Process Another Video
+                            </button>
+                        </div>
                     </div>
+                )}
+            </div>
+
+            {/* Error & Progress Feedback */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-500 text-sm">
+                    {error}
                 </div>
             )}
 
-            {/* Error */}
-            {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-                    <p className="text-red-400 text-sm">{error}</p>
+            {/* Pipeline Status Component */}
+            {status.stage !== 'idle' && !result && (
+                <div className="pt-2 flex flex-col gap-2">
+                    <StatusPanel status={status} />
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                        <div className="h-2 w-full bg-gray-200 dark:bg-[#1A1F2E] rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-[#F59E0B] rounded-full transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
+
         </div>
     )
 }

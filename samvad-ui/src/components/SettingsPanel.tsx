@@ -58,33 +58,34 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     return (
         <>
             {/* Overlay */}
-            <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
 
             {/* Drawer */}
-            <div className="fixed top-0 right-0 w-80 h-full bg-[#1A1F2E] border-l border-[#2D3748] z-50 overflow-y-auto animate-slide-in">
+            <div className="fixed top-0 right-0 w-80 h-full glass-panel bg-white/90 dark:bg-[#0B0E16]/90 border-l border-gray-200 dark:border-white/10 z-50 overflow-y-auto animate-slide-in shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-[#2D3748]">
-                    <h2 className="text-lg font-bold text-[#F7FAFC]">Settings</h2>
-                    <button onClick={onClose} className="p-1.5 hover:bg-[#2D3748] rounded-lg transition-colors">
-                        <X className="w-5 h-5 text-[#A0AEC0]" />
+                <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent opacity-50"></div>
+                    <h2 className="text-lg font-display font-bold text-gray-800 dark:text-[#F7FAFC]">Settings</h2>
+                    <button onClick={onClose} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors">
+                        <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                     </button>
                 </div>
 
-                <div className="p-5 space-y-6">
+                <div className="p-5 space-y-8">
                     {/* Avatar Selection */}
                     <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">
-                            <User className="w-3.5 h-3.5" /> Avatar Style
+                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            <User className="w-3.5 h-3.5 text-[#F59E0B]" /> Avatar Style
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                             {(['female', 'male', 'neutral'] as const).map(g => (
                                 <button
                                     key={g}
                                     onClick={() => update('avatar_gender', g)}
-                                    className={`py-2 px-3 rounded-lg text-xs font-medium capitalize transition-all
-                    ${settings.avatar_gender === g
-                                            ? 'bg-[#A3E635]/20 text-[#A3E635] border border-[#A3E635]/50'
-                                            : 'bg-[#0F1117] text-[#A0AEC0] border border-[#2D3748] hover:border-[#4A5568]'
+                                    className={`py-2 px-3 rounded-xl text-xs font-medium capitalize transition-all
+                                        ${settings.avatar_gender === g
+                                            ? 'bg-[#F59E0B]/20 text-[#D97706] dark:text-[#F59E0B] border border-[#F59E0B]/50 shadow-sm'
+                                            : 'bg-white/50 dark:bg-[#151928] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/5 hover:border-gray-400 dark:hover:border-white/20'
                                         }`}
                                 >
                                     {g}
@@ -95,9 +96,9 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
                     {/* Signing Speed */}
                     <div className="space-y-3">
-                        <label className="flex items-center justify-between text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">
-                            <span className="flex items-center gap-2"><Gauge className="w-3.5 h-3.5" /> Speed</span>
-                            <span className="text-[#A3E635] normal-case">{settings.signing_speed}x</span>
+                        <label className="flex items-center justify-between text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            <span className="flex items-center gap-2"><Gauge className="w-3.5 h-3.5 text-[#F59E0B]" /> Speed</span>
+                            <span className="text-[#F59E0B] normal-case bg-[#F59E0B]/10 px-2 py-0.5 rounded-md border border-[#F59E0B]/20">{settings.signing_speed}x</span>
                         </label>
                         <input
                             type="range"
@@ -106,27 +107,27 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                             step="0.25"
                             value={settings.signing_speed}
                             onChange={(e) => update('signing_speed', parseFloat(e.target.value))}
-                            className="w-full"
+                            className="w-full mt-2"
                         />
-                        <div className="flex justify-between text-[10px] text-[#4A5568]">
-                            <span>0.5x</span><span>1x</span><span>1.5x</span><span>2x</span>
+                        <div className="flex justify-between text-[10px] font-mono text-gray-400 dark:text-gray-500">
+                            <span>0.5x</span><span>1.0x</span><span>1.5x</span><span>2.0x</span>
                         </div>
                     </div>
 
                     {/* PiP Size */}
                     <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">
-                            <Move className="w-3.5 h-3.5" /> Avatar Size
+                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            <Move className="w-3.5 h-3.5 text-[#F59E0B]" /> Avatar Size (PiP)
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                             {(['small', 'medium', 'large'] as const).map(s => (
                                 <button
                                     key={s}
                                     onClick={() => update('pip_size', s)}
-                                    className={`py-2 px-3 rounded-lg text-xs font-medium capitalize transition-all
-                    ${settings.pip_size === s
-                                            ? 'bg-[#A3E635]/20 text-[#A3E635] border border-[#A3E635]/50'
-                                            : 'bg-[#0F1117] text-[#A0AEC0] border border-[#2D3748] hover:border-[#4A5568]'
+                                    className={`py-2 px-3 rounded-xl text-xs font-medium capitalize transition-all
+                                        ${settings.pip_size === s
+                                            ? 'bg-[#F59E0B]/20 text-[#D97706] dark:text-[#F59E0B] border border-[#F59E0B]/50 shadow-sm'
+                                            : 'bg-white/50 dark:bg-[#151928] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-white/5 hover:border-gray-400 dark:hover:border-white/20'
                                         }`}
                                 >
                                     {s}
@@ -137,16 +138,16 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
                     {/* PiP Position */}
                     <div className="space-y-3">
-                        <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">Position</label>
-                        <div className="grid grid-cols-2 gap-2 w-24">
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-5">Position</label>
+                        <div className="grid grid-cols-2 gap-2 w-28 ml-5">
                             {pipPositions.map(p => (
                                 <button
                                     key={p.key}
                                     onClick={() => update('pip_position', p.key)}
-                                    className={`py-1.5 rounded text-[10px] font-bold transition-all
-                    ${settings.pip_position === p.key
-                                            ? 'bg-[#A3E635] text-[#0F1117]'
-                                            : 'bg-[#2D3748] text-[#A0AEC0] hover:bg-[#4A5568]'
+                                    className={`py-2 rounded-lg text-[10px] font-bold transition-all
+                                        ${settings.pip_position === p.key
+                                            ? 'bg-[#F59E0B] text-white shadow-md'
+                                            : 'bg-gray-200 dark:bg-[#151928] text-gray-500 hover:bg-gray-300 dark:hover:bg-white/10'
                                         }`}
                                 >
                                     {p.label}
@@ -155,29 +156,41 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         </div>
                     </div>
 
+                    <div className="border-t border-gray-200 dark:border-white/10 my-6"></div>
+
                     {/* Show Gloss Toggle */}
                     <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">
-                            <Eye className="w-3.5 h-3.5" /> Show ISL Gloss
+                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            <Eye className="w-3.5 h-3.5 text-[#F59E0B]" /> Show ISL Gloss
                         </label>
                         <button
                             onClick={() => update('show_isl_gloss', !settings.show_isl_gloss)}
-                            className={`w-10 h-5 rounded-full relative transition-colors
-                ${settings.show_isl_gloss ? 'bg-[#A3E635]' : 'bg-[#2D3748]'}`}
+                            className={`w-11 h-6 rounded-full relative transition-colors shadow-inner
+                                ${settings.show_isl_gloss ? 'bg-[#F59E0B]' : 'bg-gray-300 dark:bg-gray-700'}`}
                         >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform
-                ${settings.show_isl_gloss ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform
+                                ${settings.show_isl_gloss ? 'translate-x-5' : 'translate-x-0.5'}`} />
                         </button>
                     </div>
 
                     {/* Target Languages */}
-                    <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#A0AEC0] uppercase tracking-wider">
-                            <Languages className="w-3.5 h-3.5" /> Dubbing Languages
+                    <div className="space-y-4 pt-4">
+                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            <Languages className="w-3.5 h-3.5 text-[#F59E0B]" /> Dubbing Languages
                         </label>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2.5">
                             {allLanguages.map(lang => (
                                 <label key={lang.code} className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors
+                                        ${settings.target_languages.includes(lang.code)
+                                            ? 'bg-[#F59E0B] border-[#F59E0B]'
+                                            : 'border-gray-300 dark:border-gray-600 bg-transparent group-hover:border-[#F59E0B]/50'}`}>
+                                        {settings.target_languages.includes(lang.code) && (
+                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        )}
+                                    </div>
                                     <input
                                         type="checkbox"
                                         checked={settings.target_languages.includes(lang.code)}
@@ -188,9 +201,12 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                                                 update('target_languages', settings.target_languages.filter(l => l !== lang.code))
                                             }
                                         }}
-                                        className="w-4 h-4 rounded border-[#2D3748] bg-[#0F1117] text-[#A3E635] focus:ring-[#A3E635]/30"
+                                        className="hidden"
                                     />
-                                    <span className="text-sm text-[#F7FAFC] group-hover:text-[#A3E635] transition-colors">
+                                    <span className={`text-sm tracking-wide transition-colors ${settings.target_languages.includes(lang.code)
+                                            ? 'text-gray-800 dark:text-gray-200'
+                                            : 'text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300'
+                                        }`}>
                                         {lang.name}
                                     </span>
                                 </label>

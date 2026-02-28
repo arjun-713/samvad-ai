@@ -46,20 +46,40 @@ export default function ReverseMode() {
     }, [])
 
     return (
-        <div className="h-full flex flex-col gap-4 animate-fade-in">
-            {/* Header */}
-            <div>
-                <h2 className="text-xl font-bold text-[#F7FAFC] flex items-center gap-2 mb-1">
-                    <span className="text-2xl">🤟</span>
-                    Reverse Mode
-                </h2>
-                <p className="text-[#A0AEC0] text-sm">For deaf creators — sign into camera to generate voice and subtitles</p>
-            </div>
+        <div className="flex flex-col h-full space-y-6">
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-4">
-                {/* Camera feed */}
-                <div className="flex-1 relative rounded-xl overflow-hidden bg-[#1A1F2E] border border-[#2D3748]">
+            {/* Main Glass Card */}
+            <div className="flex-1 glass-panel bg-white/60 dark:bg-[#151928]/60 rounded-[24px] p-6 shadow-xl flex flex-col relative overflow-hidden group border-t border-white/20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent opacity-50"></div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-display font-semibold text-gray-800 dark:text-white flex items-center">
+                        <Camera className="w-5 h-5 text-[#F59E0B] mr-2" />
+                        Reverse Mode
+                        {isActive && (
+                            <span className="flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-[#A3E635]/10 border border-[#A3E635]/20 rounded-full">
+                                <span className="w-2 h-2 bg-[#A3E635] rounded-full animate-pulse" />
+                                <span className="text-[10px] text-[#A3E635] font-bold uppercase tracking-widest">Scanning</span>
+                            </span>
+                        )}
+                    </h2>
+
+                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest
+                        ${isConnected
+                            ? 'bg-green-500/10 border-green-500/30 text-green-500'
+                            : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                        {isConnected ? 'Connected' : 'Disconnected'}
+                    </div>
+                </div>
+
+                <p className="text-gray-500 dark:text-gray-400 text-xs mb-4">
+                    For deaf creators — sign into the camera to generate voice and subtitles.
+                </p>
+
+                {/* Camera Feed Area */}
+                <div className="w-full aspect-video relative rounded-2xl overflow-hidden bg-black shadow-inner border border-white/10 mb-4 flex-shrink-0">
                     {isActive ? (
                         <>
                             <Webcam
@@ -70,127 +90,98 @@ export default function ReverseMode() {
                                 videoConstraints={{ width: 1280, height: 720, facingMode: 'user' }}
                             />
 
-                            {/* Hand detection overlay area */}
+                            {/* Hand detection overlay alert */}
                             {reverseResult && reverseResult.detected_signs.length > 0 && (
-                                <div className="absolute inset-4 border-2 border-[#A3E635]/40 rounded-xl pointer-events-none">
-                                    <span className="absolute top-2 left-2 text-xs text-[#A3E635] font-bold bg-black/50 px-2 py-0.5 rounded">
-                                        ✋ Hands Detected
+                                <div className="absolute top-4 left-4 flex gap-2">
+                                    <span className="text-[10px] text-[#F59E0B] font-bold bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 uppercase tracking-wider">
+                                        <span className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse"></span>
+                                        Hands Detected
                                     </span>
                                 </div>
                             )}
-
-                            {/* Active badge */}
-                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-[#A3E635]/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                                <span className="w-2 h-2 bg-[#A3E635] rounded-full animate-pulse" />
-                                <span className="text-[#A3E635] text-xs font-bold">Scanning</span>
-                            </div>
                         </>
                     ) : (
-                        <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center gap-4">
-                            <div className="w-20 h-20 rounded-full bg-[#7C3AED]/10 flex items-center justify-center">
-                                <Camera className="w-8 h-8 text-[#7C3AED]" />
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                            <div className="w-16 h-16 rounded-full bg-[#F59E0B]/10 flex items-center justify-center mb-4">
+                                <Camera className="w-8 h-8 text-[#F59E0B]" />
                             </div>
-                            <p className="text-[#A0AEC0] text-sm font-medium">Ready to detect sign language</p>
-                            <p className="text-[#4A5568] text-xs max-w-sm text-center">
-                                Your camera will capture video frames, detect hand gestures using MediaPipe,
-                                and generate spoken text + subtitles from recognized signs.
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">
+                                Ready to detect sign language.<br />Click start to enable your camera.
                             </p>
                         </div>
                     )}
                 </div>
 
-                {/* Results panel */}
-                <div className="w-full lg:w-[300px] flex flex-col gap-3">
-                    {/* Connection status */}
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium
-            ${isConnected ? 'bg-[#68D391]/10 text-[#68D391]' : 'bg-red-500/10 text-red-400'}`}>
-                        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#68D391]' : 'bg-red-400'}`} />
-                        {isConnected ? 'WebSocket Connected' : 'Disconnected'}
+                {/* Results Panel */}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    {/* Generated Speech Display */}
+                    <div className="bg-white/40 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
+                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Generated Speech</p>
+                        {reverseResult?.generated_text ? (
+                            <div className="relative">
+                                <div className="bg-white dark:bg-[#0B0E16] rounded-xl p-4 shadow-sm border border-gray-200 dark:border-white/5">
+                                    <p className="text-gray-800 dark:text-gray-100 text-sm leading-relaxed">{reverseResult.generated_text}</p>
+                                </div>
+                                {/* Confidence Bar */}
+                                <div className="mt-3 flex items-center gap-3">
+                                    <div className="flex-1 h-1.5 bg-gray-200 dark:bg-[#1A1F2E] rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-[#A3E635] rounded-full transition-all duration-500"
+                                            style={{ width: `${(reverseResult.confidence || 0) * 100}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 font-mono font-bold">
+                                        {Math.round((reverseResult.confidence || 0) * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-gray-400 dark:text-gray-500 text-xs italic">Waiting for sign detection...</p>
+                        )}
                     </div>
 
-                    {/* Detected signs */}
-                    <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                        <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-3">Detected Signs</p>
+                    {/* Detected Signs Tracking */}
+                    <div className="bg-white/40 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
+                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sign History</p>
                         {detectedHistory.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-2">
                                 {detectedHistory.map((sign, i) => (
                                     <span
                                         key={i}
-                                        className="px-2.5 py-1 bg-[#7C3AED]/20 text-[#7C3AED] rounded-full text-xs font-mono-isl font-medium"
+                                        className="px-3 py-1 bg-white dark:bg-[#0B0E16] text-[#F59E0B] rounded-full text-[10px] font-mono font-bold border border-gray-200 dark:border-white/5 shadow-sm"
                                     >
                                         {sign}
                                     </span>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-[#4A5568] text-xs italic">No signs detected yet</p>
-                        )}
-                    </div>
-
-                    {/* Generated text */}
-                    <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                        <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-3">Generated Speech</p>
-                        {reverseResult?.generated_text ? (
-                            <div className="relative">
-                                {/* Speech bubble */}
-                                <div className="bg-[#0F1117] rounded-xl p-3 border border-[#2D3748]">
-                                    <p className="text-[#F7FAFC] text-sm leading-relaxed">{reverseResult.generated_text}</p>
-                                </div>
-                                {/* Confidence */}
-                                <div className="mt-2 flex items-center gap-2">
-                                    <div className="flex-1 h-1.5 bg-[#2D3748] rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-[#7C3AED] rounded-full transition-all"
-                                            style={{ width: `${(reverseResult.confidence || 0) * 100}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-[10px] text-[#A0AEC0] font-medium">
-                                        {Math.round((reverseResult.confidence || 0) * 100)}%
-                                    </span>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-[#4A5568] text-xs italic">Waiting for sign detection...</p>
+                            <p className="text-gray-400 dark:text-gray-500 text-xs italic">No signs detected yet</p>
                         )}
                     </div>
 
                     {/* Audio playback */}
                     {reverseResult?.audio_url && (
-                        <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748]">
-                            <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-2">Voice Output</p>
-                            <audio src={reverseResult.audio_url} controls className="w-full h-8" />
+                        <div className="bg-white/40 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
+                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Voice Output</p>
+                            <audio src={reverseResult.audio_url} controls className="w-full h-8 outline-none" />
                         </div>
                     )}
-
-                    {/* Phase 1 notice */}
-                    <div className="bg-[#7C3AED]/5 border border-[#7C3AED]/20 rounded-xl p-3">
-                        <p className="text-[10px] text-[#A0AEC0] leading-relaxed">
-                            <span className="text-[#7C3AED] font-bold">Phase 1:</span> Uses mock sign classification.
-                            Real ISL recognition model coming in Phase 2 with SageMaker.
-                        </p>
-                    </div>
                 </div>
             </div>
 
-            {/* Controls */}
+            {/* Action Buttons */}
             <button
                 onClick={isActive ? handleStop : handleStart}
-                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2
-          ${isActive
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
-                        : 'bg-[#7C3AED] text-white hover:bg-[#8B5CF6] shadow-lg shadow-[#7C3AED]/20'
+                className={`w-full py-4 rounded-full shadow-lg font-display font-bold text-lg tracking-wide transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center group relative overflow-hidden ${isActive
+                        ? 'bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
+                        : 'bg-[linear-gradient(135deg,#F59E0B_0%,#D97706_100%)] text-white shadow-[#F59E0B]/20 hover:shadow-[#F59E0B]/40'
                     }`}
             >
+                {!isActive && <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-in-out -translate-x-full skew-x-12"></span>}
                 {isActive ? (
-                    <>
-                        <CameraOff className="w-4 h-4" />
-                        Stop Detection
-                    </>
+                    <><CameraOff className="w-5 h-5 mr-2" /> Stop Detection</>
                 ) : (
-                    <>
-                        <Camera className="w-4 h-4" />
-                        Start Sign Detection
-                    </>
+                    <><Camera className="w-5 h-5 mr-no-gap mr-2" /> Start Sign Detection</>
                 )}
             </button>
         </div>

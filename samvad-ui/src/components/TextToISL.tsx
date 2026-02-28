@@ -1,179 +1,106 @@
 import { useState } from 'react'
-import { Type, Zap, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
-import ISLAvatar from './ISLAvatar'
+import { Type, RefreshCw } from 'lucide-react'
 import StatusPanel from './StatusPanel'
-import LanguageSelector from './LanguageSelector'
 import { useISLPipeline } from '../hooks/useISLPipeline'
+import type { ISLResult } from '../types'
 
 const quickPhrases = [
-    'How can I help you today?',
-    'Where is the nearest station?',
+    'How can I help you?',
+    'Where is the station?',
     'Thank you very much',
-    'Please wait a moment',
-    'I am going to school tomorrow',
-    'The weather is very hot today',
 ]
 
-export default function TextToISL() {
-    const [text, setText] = useState('')
-    const [language, setLanguage] = useState('hi-IN')
-    const [showNotes, setShowNotes] = useState(false)
-    const [speed, setSpeed] = useState(1.0)
-    const { status, result, error, loading, processText, reset } = useISLPipeline()
+interface TextToISLProps {
+    onResult: (result: ISLResult) => void
+}
 
-    const handleSubmit = () => {
+export default function TextToISL({ onResult }: TextToISLProps) {
+    const [text, setText] = useState('')
+    const { status, error, loading, processText } = useISLPipeline()
+
+    const handleSubmit = async () => {
         if (!text.trim()) return
-        processText(text.trim(), language)
+        const res = await processText(text.trim(), 'hi-IN')
+        if (res) onResult(res)
     }
 
-    const handleQuickPhrase = (phrase: string) => {
+    const handleQuickPhrase = async (phrase: string) => {
         setText(phrase)
-        processText(phrase, language)
+        const res = await processText(phrase, 'hi-IN')
+        if (res) onResult(res)
     }
 
     return (
-        <div className="h-full flex flex-col lg:flex-row gap-6 animate-fade-in">
-            {/* Left: Input */}
-            <div className="flex-1 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-[#F7FAFC] flex items-center gap-2">
-                        <Type className="w-5 h-5 text-[#A3E635]" />
-                        Text to ISL
+        <div className="flex flex-col h-full space-y-6">
+
+            {/* Input Card */}
+            <div className="flex-1 glass-panel bg-white/60 dark:bg-[#151928]/60 rounded-[24px] p-6 shadow-xl flex flex-col relative overflow-hidden group border-t border-white/20">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent opacity-50"></div>
+
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-display font-semibold text-gray-800 dark:text-white flex items-center">
+                        <Type className="text-[#F59E0B] mr-2 w-5 h-5" />
+                        Input Text
                     </h2>
-                    <LanguageSelector selectedLanguage={language} onLanguageChange={setLanguage} />
-                </div>
-
-                {/* Textarea */}
-                <div className="relative flex-1">
-                    <textarea
-                        value={text}
-                        onChange={(e) => setText(e.target.value.slice(0, 500))}
-                        placeholder="Type what you want the AI assistant to sign..."
-                        className="w-full h-full min-h-[180px] bg-[#1A1F2E] border border-[#2D3748] rounded-xl p-4 text-[#F7FAFC] placeholder:text-[#4A5568] resize-none focus:outline-none focus:border-[#A3E635]/50 focus:ring-1 focus:ring-[#A3E635]/20 transition-all text-base leading-relaxed"
-                    />
-                    <div className="absolute bottom-3 right-3 text-xs text-[#4A5568]">
+                    <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
                         {text.length}/500
-                    </div>
+                    </span>
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading || !text.trim()}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm transition-all
-              ${loading || !text.trim()
-                                ? 'bg-[#2D3748] text-[#4A5568] cursor-not-allowed'
-                                : 'bg-[#A3E635] text-[#0F1117] hover:bg-[#BEF264] shadow-lg shadow-[#A3E635]/20'
-                            }`}
-                    >
-                        {loading ? (
-                            <>
-                                <RefreshCw className="w-4 h-4 animate-spin" />
-                                Processing...
-                            </>
-                        ) : (
-                            <>
-                                <Zap className="w-4 h-4" />
-                                Translate to ISL
-                            </>
-                        )}
-                    </button>
-                    {result && (
-                        <button
-                            onClick={reset}
-                            className="py-3 px-4 rounded-xl border border-[#2D3748] text-[#A0AEC0] hover:bg-[#2D3748]/50 text-sm font-medium transition-colors"
-                        >
-                            Clear
-                        </button>
-                    )}
-                </div>
+                <textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value.slice(0, 500))}
+                    placeholder="Type what you want the AI assistant to sign..."
+                    className="flex-1 w-full bg-transparent border-0 resize-none focus:ring-0 text-lg md:text-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 leading-relaxed font-light outline-none"
+                ></textarea>
 
-                {/* Speed control */}
-                <div className="flex items-center gap-4">
-                    <span className="text-xs font-medium text-[#A0AEC0] uppercase tracking-wider">Speed</span>
-                    <input
-                        type="range"
-                        min="0.5"
-                        max="2"
-                        step="0.25"
-                        value={speed}
-                        onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                        className="flex-1"
-                    />
-                    <span className="text-xs font-bold text-[#A3E635] w-8">{speed}x</span>
-                </div>
-
-                {/* Quick phrases */}
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">Quick Phrases</p>
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/5">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Quick Phrases</p>
                     <div className="flex flex-wrap gap-2">
                         {quickPhrases.map((phrase) => (
                             <button
                                 key={phrase}
                                 onClick={() => handleQuickPhrase(phrase)}
                                 disabled={loading}
-                                className="px-3 py-1.5 bg-[#1A1F2E] border border-[#2D3748] rounded-full text-xs text-[#A0AEC0] hover:border-[#A3E635]/30 hover:text-[#A3E635] transition-colors disabled:opacity-50"
+                                className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-[#F59E0B]/10 hover:text-[#F59E0B] dark:hover:bg-[#F59E0B]/20 dark:hover:text-[#F59E0B] border border-transparent hover:border-[#F59E0B]/30 text-xs text-gray-600 dark:text-gray-300 transition-all duration-200 disabled:opacity-50"
                             >
                                 {phrase}
                             </button>
                         ))}
                     </div>
                 </div>
-
-                {/* Pipeline status */}
-                <StatusPanel status={status} className="mt-2" />
             </div>
 
-            {/* Right: Result */}
-            <div className="w-full lg:w-[340px] flex flex-col gap-4">
-                {/* Avatar */}
-                <ISLAvatar result={result} speed={speed} className="h-64" showGloss={true} />
-
-                {/* ISL Gloss */}
-                {result && (
-                    <div className="bg-[#1A1F2E] rounded-xl p-4 border border-[#2D3748] animate-fade-in">
-                        <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-wider mb-2">ISL Gloss</p>
-                        <p className="text-[#A3E635] font-mono-isl text-sm leading-relaxed">{result.gloss}</p>
-                    </div>
+            {/* Sign This Button */}
+            <button
+                onClick={handleSubmit}
+                disabled={loading || !text.trim()}
+                className={`w-full py-4 rounded-full shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 font-display font-bold text-lg tracking-wide transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center group relative overflow-hidden ${loading || !text.trim()
+                        ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+                        : 'bg-[linear-gradient(135deg,#F59E0B_0%,#D97706_100%)] text-white'
+                    }`}
+            >
+                <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-in-out -translate-x-full skew-x-12"></span>
+                {loading ? (
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                    <span className="material-symbols-rounded mr-2 group-hover:rotate-12 transition-transform">sign_language</span>
                 )}
+                {loading ? 'Translating...' : 'Sign This'}
+            </button>
 
-                {/* Cultural Notes */}
-                {result && result.cultural_notes && result.cultural_notes.length > 0 && (
-                    <div className="bg-[#1A1F2E] rounded-xl border border-[#2D3748] overflow-hidden">
-                        <button
-                            onClick={() => setShowNotes(!showNotes)}
-                            className="w-full flex items-center justify-between p-3 text-xs font-bold text-[#A0AEC0] uppercase tracking-wider hover:bg-[#2D3748]/30 transition-colors"
-                        >
-                            <span>Cultural Notes ({result.cultural_notes.length})</span>
-                            {showNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {showNotes && (
-                            <div className="px-3 pb-3 space-y-1.5">
-                                {result.cultural_notes.map((note, i) => (
-                                    <p key={i} className="text-xs text-[#A0AEC0] flex items-start gap-2">
-                                        <span className="text-[#7C3AED] mt-0.5">•</span>
-                                        {note}
-                                    </p>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+            {/* Error display */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 animate-fade-in text-red-500 text-sm">
+                    {error}
+                </div>
+            )}
 
-                {/* Error */}
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 animate-fade-in">
-                        <p className="text-red-400 text-sm font-medium">{error}</p>
-                        <button
-                            onClick={() => processText(text, language)}
-                            className="mt-2 text-xs font-semibold text-red-400 hover:text-red-300 underline"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                )}
+            {/* Pipeline Status Component */}
+            <div className="pt-2">
+                <StatusPanel status={status} />
             </div>
+
         </div>
     )
 }

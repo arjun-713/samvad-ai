@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import LanguageSelector from '../components/LanguageSelector';
-import { checkHealth, getStatus } from '../services/api';
+import { checkHealth, getStatus, translateToISL, synthesizeAudio, playBase64Audio, type ISLGlossResponse } from '../services/api';
 
 export default function LiveSession() {
   const [reverseMode, setReverseMode] = useState(false);
@@ -9,6 +9,12 @@ export default function LiveSession() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [backendMessage, setBackendMessage] = useState<string>('');
+
+  // Translation & ISL
+  const [inputText, setInputText] = useState('');
+  const [islResult, setIslResult] = useState<ISLGlossResponse | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
 
   const avatars = [
     { name: 'Maya', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpOrIJ8SjitPHl9rZ6Goljshf4GdVIq2A4n5bD4JGthOdCxH6RzCEGRr9iKCn3aHlekUxxZjl6H06hUVNVLRvEvoOciidUbN5d6PuLd9lxJMg89iehZ5ib0UMdpFX6Mr4o9Nf_j06PL4-7UMOvxGR4R6dDQGcMaa4SyM3CQAu9WL1S7xugC1WnyLrfmoqGsbnRTren_CocH66cq0MOVJTJTC92wa5O6FXQ6E2BediarBDQdXoh2R9X7qU_40EgsHkcToNXrsrwDz-3' },
@@ -19,20 +25,17 @@ export default function LiveSession() {
   const handleConnectStream = async () => {
     setConnectionStatus('connecting');
     setBackendMessage('Connecting to backend...');
-    
+
     try {
-      // Test health endpoint
       const healthResponse = await checkHealth();
       console.log('Health Check Response:', healthResponse);
-      
-      // Get system status
+
       const statusResponse = await getStatus();
       console.log('Status Response:', statusResponse);
-      
+
       setConnectionStatus('connected');
-      setBackendMessage(`✓ ${healthResponse.status}`);
-      
-      // Show success message for 3 seconds
+      setBackendMessage(`✓ ${healthResponse.status} (v${healthResponse.version})`);
+
       setTimeout(() => {
         setConnectionStatus('idle');
         setBackendMessage('');
@@ -41,13 +44,47 @@ export default function LiveSession() {
       console.error('Connection failed:', error);
       setConnectionStatus('error');
       setBackendMessage('✗ Backend connection failed. Is the server running?');
-      
-      // Reset after 5 seconds
+
       setTimeout(() => {
         setConnectionStatus('idle');
         setBackendMessage('');
       }, 5000);
     }
+  };
+
+  // Translate text to ISL
+  const handleTranslateToISL = async () => {
+    if (!inputText.trim()) return;
+    setIsTranslating(true);
+    try {
+      const result = await translateToISL(inputText, selectedLanguage);
+      setIslResult(result);
+    } catch (err) {
+      console.error('Translation failed:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Synthesize audio from text
+  const handleSynthesize = async () => {
+    if (!inputText.trim()) return;
+    setIsSynthesizing(true);
+    try {
+      const result = await synthesizeAudio(inputText, selectedLanguage);
+      playBase64Audio(result.audio_base64);
+    } catch (err) {
+      console.error('Synthesis failed:', err);
+    } finally {
+      setIsSynthesizing(false);
+    }
+  };
+
+  // Confidence color
+  const confColor = (islResult?.confidence ?? 0) >= 0.8 ? 'bg-green-500' : (islResult?.confidence ?? 0) >= 0.6 ? 'bg-yellow-500' : 'bg-red-500';
+
+  const toneEmoji: Record<string, string> = {
+    neutral: '😐', happy: '😊', sad: '😢', angry: '😠', surprised: '😲', questioning: '🤔',
   };
 
   return (
@@ -71,16 +108,21 @@ export default function LiveSession() {
             </button>
           </div>
 
+          {/* Avatar PIP with animation */}
           <div className="absolute top-6 right-6 w-48 aspect-[3/4] glass-pip rounded-xl overflow-hidden shadow-lg border border-white/20">
-            <div
-              className="w-full h-full bg-cover bg-center opacity-90"
-              style={{
-                backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBpQKw0pAnh89sXV6giTJh62jhAbBb4azoE0LgsiHa1wS5OBRogWNxsIBvGZE2FGM6w0mlWKm0CxPSW0pl-fAY0KHNuj3hNDsF0i0m9p0L7cDl6xlP4vOQptJCjX0tuNTUOF7Lpks-BrDuT5jpbyHn2sJekJMiHujN4MEguYKCkhUC4XUNMH6hfr3x6tawzl2Qj11THLFPh4xVEe2XPwFd3fblsunxwAxpVotK78fbOZ99XI9ykUZpSjCGZWmP4ijdb3igWtt-6K2U2')"
-              }}
-            ></div>
-            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
-              <span className="text-xs text-white font-medium drop-shadow-md">Signer</span>
-              <div className="size-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(74,222,128,0.8)]"></div>
+            <div className="w-full h-full relative">
+              <img
+                src={avatars[selectedAvatar].image}
+                alt={`${avatars[selectedAvatar].name} avatar`}
+                className="w-full h-full object-cover opacity-90"
+              />
+              {/* Sign animation overlay */}
+              <div className="absolute inset-0 flex items-end justify-center pb-3">
+                <div className="bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <div className="size-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></div>
+                  <span className="text-xs text-white font-medium">{avatars[selectedAvatar].name} • Signing</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -91,46 +133,37 @@ export default function LiveSession() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-2">
-          <button 
+          <button
             onClick={handleConnectStream}
             disabled={connectionStatus === 'connecting'}
-            className={`relative group overflow-hidden rounded-xl px-6 py-3 transition-all w-full sm:w-auto flex-1 max-w-sm border ${
-              connectionStatus === 'connected' 
-                ? 'bg-green-500/20 border-green-500/50' 
+            className={`relative group overflow-hidden rounded-xl px-6 py-3 transition-all w-full sm:w-auto flex-1 max-w-sm border ${connectionStatus === 'connected'
+                ? 'bg-green-500/20 border-green-500/50'
                 : connectionStatus === 'error'
-                ? 'bg-red-500/20 border-red-500/50'
-                : 'bg-gradient-to-r from-secondary/10 to-primary/10 hover:from-secondary/20 hover:to-primary/20 border-transparent'
-            } ${connectionStatus === 'connecting' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  ? 'bg-red-500/20 border-red-500/50'
+                  : 'bg-gradient-to-r from-secondary/10 to-primary/10 hover:from-secondary/20 hover:to-primary/20 border-transparent'
+              } ${connectionStatus === 'connecting' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <div className="absolute inset-0 rounded-xl border border-transparent group-hover:border-primary/30 transition-colors"></div>
             <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-gradient-to-r from-secondary to-primary group-hover:w-full transition-all duration-500"></div>
             <div className="flex items-center justify-center gap-3 relative z-10">
               {connectionStatus === 'connecting' ? (
                 <>
-                  <span className="material-symbols-outlined text-primary animate-spin">
-                    progress_activity
-                  </span>
+                  <span className="material-symbols-outlined text-primary animate-spin">progress_activity</span>
                   <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connecting...</span>
                 </>
               ) : connectionStatus === 'connected' ? (
                 <>
-                  <span className="material-symbols-outlined text-green-600">
-                    check_circle
-                  </span>
+                  <span className="material-symbols-outlined text-green-600">check_circle</span>
                   <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connected!</span>
                 </>
               ) : connectionStatus === 'error' ? (
                 <>
-                  <span className="material-symbols-outlined text-red-600">
-                    error
-                  </span>
+                  <span className="material-symbols-outlined text-red-600">error</span>
                   <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connection Failed</span>
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">
-                    videocam
-                  </span>
+                  <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">videocam</span>
                   <span className="text-[#2c2420] dark:text-white font-bold text-sm tracking-wide">Connect Live Stream</span>
                 </>
               )}
@@ -138,11 +171,10 @@ export default function LiveSession() {
           </button>
 
           {backendMessage && (
-            <div className={`text-sm font-medium ${
-              connectionStatus === 'connected' ? 'text-green-600 dark:text-green-400' : 
-              connectionStatus === 'error' ? 'text-red-600 dark:text-red-400' : 
-              'text-[#5a4d48] dark:text-stone-300'
-            }`}>
+            <div className={`text-sm font-medium ${connectionStatus === 'connected' ? 'text-green-600 dark:text-green-400' :
+                connectionStatus === 'error' ? 'text-red-600 dark:text-red-400' :
+                  'text-[#5a4d48] dark:text-stone-300'
+              }`}>
               {backendMessage}
             </div>
           )}
@@ -166,6 +198,58 @@ export default function LiveSession() {
           </div>
         </div>
 
+        {/* ISL Gloss Panel — NEW */}
+        {islResult && (
+          <div className="bg-white/40 dark:bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-stone-200/50 dark:border-stone-700/50 shadow-soft">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-[#2c2420] dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">sign_language</span>
+                ISL Gloss Output
+              </h2>
+              <button
+                onClick={() => navigator.clipboard.writeText(islResult.isl_gloss.join(' '))}
+                className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                Copy
+              </button>
+            </div>
+
+            {/* Gloss tokens */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {islResult.isl_gloss.map((token, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-full text-sm font-semibold text-[#2c2420] dark:text-white shadow-sm"
+                >
+                  {token}
+                </span>
+              ))}
+            </div>
+
+            {/* Tone & confidence */}
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#fdfbf7] dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-full text-sm font-medium text-[#2c2420] dark:text-white">
+                {toneEmoji[islResult.emotional_tone] || '😐'} {islResult.emotional_tone}
+              </span>
+              <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                <span className="text-xs text-stone-400">Conf:</span>
+                <div className="flex-1 bg-stone-200 dark:bg-stone-700 rounded-full h-2">
+                  <div className={`${confColor} h-2 rounded-full`} style={{ width: `${islResult.confidence * 100}%` }}></div>
+                </div>
+                <span className="text-xs font-semibold text-[#2c2420] dark:text-white">{(islResult.confidence * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+
+            {islResult.notes && (
+              <p className="text-xs text-[#5a4d48] dark:text-stone-400 italic mt-3 border-t border-stone-200/50 dark:border-stone-700/50 pt-3">
+                💡 {islResult.notes}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Live Context */}
         <div className="bg-white/40 dark:bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-stone-200/50 dark:border-stone-700/50 shadow-soft">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-[#2c2420] dark:text-white flex items-center gap-2">
@@ -202,19 +286,28 @@ export default function LiveSession() {
         <div className="glass-panel dark:bg-black/30 rounded-2xl p-8 shadow-soft h-full flex flex-col relative z-10 border-t border-white dark:border-stone-700">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-[#2c2420] dark:text-white">Translation Deck</h3>
-            <span className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full animate-pulse">
-              Signing...
-            </span>
+            {isTranslating && (
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full animate-pulse">
+                Translating...
+              </span>
+            )}
           </div>
 
           <div className="flex-1 bg-[#fdfbf7] dark:bg-stone-900 rounded-xl p-6 mb-6 shadow-inner-glow relative group border border-stone-100 dark:border-stone-700 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
             <textarea
-              className="w-full h-full bg-transparent border-none resize-none focus:ring-0 text-lg text-[#2c2420] dark:text-white placeholder-[#a89b96] dark:placeholder-stone-500 font-display leading-relaxed z-10 relative"
-              placeholder="Enter text to translate..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="w-full h-full bg-transparent border-none resize-none focus:ring-0 text-lg text-[#2c2420] dark:text-white placeholder-[#a89b96] dark:placeholder-stone-500 font-display leading-relaxed z-10 relative focus:outline-none"
+              placeholder="Enter text to translate to ISL Gloss..."
             ></textarea>
             <div className="absolute bottom-4 right-4 flex gap-2">
-              <button className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full text-stone-400 hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-xl">mic</span>
+              <button
+                onClick={handleSynthesize}
+                disabled={isSynthesizing || !inputText.trim()}
+                className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full text-stone-400 hover:text-primary transition-colors disabled:opacity-30"
+                title="Speak this text (Polly TTS)"
+              >
+                <span className="material-symbols-outlined text-xl">{isSynthesizing ? 'progress_activity' : 'volume_up'}</span>
               </button>
               <button className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full text-stone-400 hover:text-primary transition-colors">
                 <span className="material-symbols-outlined text-xl">upload_file</span>
@@ -223,6 +316,14 @@ export default function LiveSession() {
           </div>
 
           <div className="flex flex-wrap gap-3 mb-8">
+            <button
+              onClick={handleTranslateToISL}
+              disabled={isTranslating || !inputText.trim()}
+              className="bg-gradient-to-r from-secondary to-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="material-symbols-outlined text-base">{isTranslating ? 'progress_activity' : 'sign_language'}</span>
+              {isTranslating ? 'Converting...' : 'Convert to ISL'}
+            </button>
             <button className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-primary/50 text-[#5a4d48] dark:text-stone-300 px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2">
               <span className="material-symbols-outlined text-base">sentiment_satisfied</span>
               Interpret Tone
@@ -246,11 +347,10 @@ export default function LiveSession() {
                     onClick={() => setSelectedAvatar(index)}
                   >
                     <div
-                      className={`size-14 rounded-2xl overflow-hidden ${
-                        selectedAvatar === index
+                      className={`size-14 rounded-2xl overflow-hidden ${selectedAvatar === index
                           ? 'ring-2 ring-primary ring-offset-2 ring-offset-[#faf8f6] dark:ring-offset-[#2c2420]'
                           : 'ring-1 ring-transparent group-hover:ring-stone-300 opacity-60 hover:opacity-100'
-                      } transition-all`}
+                        } transition-all`}
                     >
                       <img
                         alt={`${avatar.name} avatar`}

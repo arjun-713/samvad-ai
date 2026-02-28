@@ -54,9 +54,10 @@ def convert_to_isl_gloss(text: str) -> list[str]:
     Converts English text to ISL gloss token list.
     Rules:
     1. Expand contractions
-    2. Remove articles, linking verbs, prepositions, conjunctions
-    3. Move time words to front
-    4. Uppercase all tokens
+    2. Check for multi-word phrases from dictionary
+    3. Remove articles, linking verbs, prepositions, conjunctions
+    4. Move time words to front
+    5. Uppercase all tokens
     Returns ordered list of ISL gloss tokens.
     """
     # Lowercase and expand contractions
@@ -64,8 +65,32 @@ def convert_to_isl_gloss(text: str) -> list[str]:
     for contraction, expansion in CONTRACTION_MAP.items():
         text = text.replace(contraction, expansion)
 
-    # Tokenize — remove punctuation
-    text = re.sub(r"[^\w\s]", " ", text)
+    # Load dictionary for phrase matching
+    import json
+    from pathlib import Path
+    dict_path = Path(__file__).parent.parent / "isl_dictionary.json"
+    try:
+        with open(dict_path) as f:
+            dictionary = json.load(f)
+    except:
+        dictionary = {}
+
+    # Sort phrases by length (longest first) to match greedily
+    phrases = sorted([k for k in dictionary.keys() if " " in k], key=len, reverse=True)
+    
+    # Placeholder for matched phrases
+    gloss_tokens = []
+    
+    for phrase in phrases:
+        if phrase in text:
+            # We found a phrase! Replace it with a single token-like string
+            # to prevent it from being split later
+            text = text.replace(phrase, phrase.replace(" ", "_").upper())
+            # Note: This is a hacky way to find phrases, but for 200 words it's okay.
+            # Real production would use a proper phrase matcher or trie.
+
+    # Tokenize — remove punctuation but keep our underscores
+    text = re.sub(r"[^A-Z_a-z\s]", " ", text)
     words = text.split()
 
     time_tokens = []
@@ -74,6 +99,12 @@ def convert_to_isl_gloss(text: str) -> list[str]:
     for word in words:
         if not word:
             continue
+        
+        # If it was a phrase, it will be all uppercase and have an underscore
+        if "_" in word and word.isupper():
+            other_tokens.append(word.replace("_", " "))
+            continue
+
         if word in DROP_WORDS:
             continue
         if word in TIME_WORDS:

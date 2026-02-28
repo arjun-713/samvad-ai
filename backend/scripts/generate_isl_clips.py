@@ -50,7 +50,31 @@ WORDS = [
     "sit", "stand", "sleep", "eat", "drink", "buy",
     "sell", "call", "wait", "play", "clean", "dirty",
     "fast", "slow", "strong", "weak", "early", "late",
-    "beautiful", "important", "unknown"
+    "beautiful", "important", "absent", "all the best", "apple",
+    "ball", "bandage", "bathroom", "bedroom", "belt", "birthday",
+    "black", "blue", "boat", "boss", "brain", "bright",
+    "bucket", "bus conductor", "butter", "button", "car", "careless",
+    "cat", "cheap", "clever", "comb", "cow", "cry",
+    "dark", "date", "deaf", "delivery", "door", "drawer",
+    "egg", "email", "fan", "flower", "funny", "gas stove",
+    "good afternoon", "government", "grandson", "hard", "health", "horse",
+    "hungry", "independence", "key", "knife", "less", "light",
+    "long", "loud", "many", "milk", "my name is", "namaste",
+    "nurse", "opinion", "orange", "paper", "paratha", "pen",
+    "pencil", "pickle", "pizza", "post office", "potato", "question",
+    "radio", "rainbow", "rasgulla", "regional", "republic day", "rice",
+    "rupee", "shirt", "shoes", "tall", "triangle", "university",
+    "who", "green", "red", "yellow", "white", "brown",
+    "purple", "pink", "grey", "sun", "moon", "star",
+    "rain", "wind", "tree", "forest", "mountain", "river",
+    "ocean", "animal", "dog", "bird", "fish", "elephant",
+    "lion", "tiger", "snake", "monkey", "bread", "fruit",
+    "vegetable", "meat", "sugar", "salt", "tea", "coffee",
+    "juice", "table", "chair", "bed", "window", "office",
+    "hospital", "market", "bank", "city", "village", "country",
+    "world", "book", "computer", "phone", "bag", "money",
+    "clothes", "hat", "watch", "color", "sound", "music",
+    "art", "unknown"
 ]
 
 ISL_PROMPT_TEMPLATE = """A photorealistic video of an Indian Sign Language (ISL) interpreter 

@@ -1,0 +1,56 @@
+{
+    "phase_info": {
+        "phase": 1,
+        "description": "Vocabulary Expansion & Real Video Integration",
+        "total_words_tested": 242,
+        "focus": [
+            "NCERT Real ISL Videos (H.264, Centered)",
+            "Multi-word Phrase Matching",
+            "Dynamic Glossary Lookup"
+        ]
+    },
+    "test_categories": {
+        "direct_ncert_real_videos": [
+            "absent",
+            "good morning",
+            "beautiful",
+            "clever",
+            "box",
+            "brave",
+            "careful",
+            "famous",
+            "fat",
+            "hockey"
+        ],
+        "phrase_matching_logic": [
+            "good morning teacher",
+            "my name is arjun",
+            "good night friend",
+            "all the best for school",
+            "republic day celebration"
+        ],
+        "hybrid_signer_sentences": [
+            "I am absent today",
+            "I see a beautiful butterfly",
+            "The teacher is clever",
+            "Please help me with the box",
+            "This is my new home"
+        ],
+        "placeholder_validation": [
+            "friend",
+            "family",
+            "mother",
+            "father",
+            "doctor",
+            "music",
+            "money"
+        ],
+        "edge_cases": [
+            "unknownword123",
+            "HI",
+            "...",
+            "Good morning!!!",
+            "i AM a hApPy StUdEnT"
+        ]
+    }
+}
